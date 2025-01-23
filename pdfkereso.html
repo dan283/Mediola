@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Search Tool</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .highlight {
+            background-color: yellow;
+        }
+        .pdf-file {
+            margin-bottom: 20px;
+        }
+        .pdf-file h3 {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>PDF Search Tool</h1>
+    <form id="searchForm">
+        <label for="pdfFiles">Select PDF Files:</label>
+        <input type="file" id="pdfFiles" multiple accept="application/pdf" required>
+        <br><br>
+        <label for="searchWord">Search Word:</label>
+        <input type="text" id="searchWord" placeholder="Enter search word" required>
+        <br><br>
+        <button type="submit">Search</button>
+    </form>
+
+    <div id="results"></div>
+
+    <script>
+        async function fetchPDFText(url) {
+            const pdf = await pdfjsLib.getDocument(url).promise;
+            let text = '';
+
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                text += content.items.map(item => item.str).join(' ');
+            }
+
+            return text;
+        }
+
+        document.getElementById('searchForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const searchWord = document.getElementById('searchWord').value;
+            const files = document.getElementById('pdfFiles').files;
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+
+            for (const file of files) {
+                const url = URL.createObjectURL(file);
+                try {
+                    const text = await fetchPDFText(url);
+
+                    if (text.toLowerCase().includes(searchWord.toLowerCase())) {
+                        const matches = text.match(new RegExp(searchWord, 'gi')) || [];
+                        const highlightedText = text.replace(new RegExp(searchWord, 'gi'), `<span class="highlight">$&</span>`);
+                        const pdfDiv = document.createElement('div');
+                        pdfDiv.classList.add('pdf-file');
+                        pdfDiv.innerHTML = `<h3>${file.name}</h3>
+                            <p>Matches found: ${matches.length}</p>
+                            <p>${highlightedText}</p>`;
+                        resultsDiv.appendChild(pdfDiv);
+                    } else {
+                        const pdfDiv = document.createElement('div');
+                        pdfDiv.classList.add('pdf-file');
+                        pdfDiv.innerHTML = `<h3>${file.name}</h3>
+                            <p>No matches found for "${searchWord}".</p>`;
+                        resultsDiv.appendChild(pdfDiv);
+                    }
+                } catch (error) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.classList.add('pdf-file');
+                    errorDiv.innerHTML = `<h3>${file.name}</h3>
+                        <p>Error reading file: ${error.message}</p>`;
+                    resultsDiv.appendChild(errorDiv);
+                } finally {
+                    URL.revokeObjectURL(url);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
