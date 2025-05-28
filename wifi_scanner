@@ -1,0 +1,60 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+import threading
+import subprocess
+import ipaddress
+import socket
+
+# Get local IP and subnet
+def get_local_network():
+    hostname = socket.gethostname()
+    ip = socket.gethostbyname(hostname)
+    try:
+        result = subprocess.check_output("ipconfig" if subprocess.os.name == 'nt' else "ifconfig").decode()
+        for line in result.splitlines():
+            if "Subnet Mask" in line or "Mask" in line:
+                mask = line.split(":")[-1].strip()
+                return ip, mask
+    except:
+        pass
+    return ip, "255.255.255.0"  # default fallback
+
+# Ping each address
+def ping(ip):
+    try:
+        cmd = ['ping', '-n', '1', '-w', '300', ip] if subprocess.os.name == 'nt' else ['ping', '-c', '1', '-W', '1', ip]
+        result = subprocess.run(cmd, stdout=subprocess.PIPE)
+        return result.returncode == 0
+    except:
+        return False
+
+# Main scanning thread
+def scan_network(output_box):
+    output_box.delete(0, tk.END)
+    ip, subnet = get_local_network()
+    try:
+        network = ipaddress.IPv4Network(f"{ip}/{subnet}", strict=False)
+    except:
+        messagebox.showerror("Error", "Invalid network settings.")
+        return
+
+    for addr in network.hosts():
+        if ping(str(addr)):
+            output_box.insert(tk.END, str(addr))
+            output_box.update()
+
+# GUI
+def start_gui():
+    root = tk.Tk()
+    root.title("Wi-Fi Device Scanner")
+
+    ttk.Label(root, text="Connected Devices:").pack(pady=5)
+    listbox = tk.Listbox(root, width=40)
+    listbox.pack(padx=10, pady=5)
+
+    scan_btn = ttk.Button(root, text="Scan Network", command=lambda: threading.Thread(target=scan_network, args=(listbox,), daemon=True).start())
+    scan_btn.pack(pady=5)
+
+    root.mainloop()
+
+start_gui()
