@@ -423,6 +423,7 @@
                         <option value="USD">USD - US Dollar</option>
                         <option value="AUD">AUD - Australian Dollar</option>
                         <option value="EUR">EUR - Euro</option>
+            <option value="HUF">HUF - Hungarian Forint</option>
                         <option value="GBP">GBP - British Pound</option>
                     </select>
                 </div>
@@ -620,6 +621,7 @@
                 'USD': '$',
                 'AUD': 'A$',
                 'EUR': '€',
+        'HUF': 'HUF',
                 'GBP': '£'
             };
             return (symbols[currency] || '$') + amount.toFixed(2);
@@ -992,6 +994,62 @@
             // Save the PDF
             const filename = `Invoice_${document.getElementById('invoiceNumber').value}.pdf`;
             doc.save(filename);
+        }
+        
+        function saveData() {
+            // Collect all form data
+            const data = {
+                businessName: document.getElementById('businessName').value,
+                businessAddress: document.getElementById('businessAddress').value,
+                businessPhone: document.getElementById('businessPhone').value,
+                businessEmail: document.getElementById('businessEmail').value,
+                businessTaxId: document.getElementById('businessTaxId').value,
+                clientName: document.getElementById('clientName').value,
+                clientAddress: document.getElementById('clientAddress').value,
+                clientPhone: document.getElementById('clientPhone').value,
+                clientEmail: document.getElementById('clientEmail').value,
+                invoiceNumber: document.getElementById('invoiceNumber').value,
+                issueDate: document.getElementById('issueDate').value,
+                dueDate: document.getElementById('dueDate').value,
+                currency: document.getElementById('currency').value,
+                gstRate: document.getElementById('gstRate').value,
+                taxLabel: document.getElementById('taxLabel').value,
+                paymentTerms: document.getElementById('paymentTerms').value,
+                notes: document.getElementById('notes').value,
+                items: []
+            };
+            
+            // Collect all items
+            const itemRows = document.querySelectorAll('.item-row');
+            itemRows.forEach(row => {
+                const description = row.querySelector('.item-description').value;
+                const quantity = row.querySelector('.item-quantity').value;
+                const price = row.querySelector('.item-price').value;
+                
+                // Only save items that have some data
+                if (description || quantity !== '1' || price !== '0') {
+                    data.items.push({
+                        description: description,
+                        quantity: quantity,
+                        price: price
+                    });
+                }
+            });
+            
+            // Create and download the JSON file
+            const jsonString = JSON.stringify(data, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Invoice_${data.invoiceNumber || 'Data'}_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            alert('Invoice data saved successfully!');
         }
 
         function loadData() {
