@@ -1,558 +1,501 @@
 #!/usr/bin/env python3
 """
-Network Traffic Monitor with GUI
-Advanced network monitoring with visual interface and suspicion analysis
+Enhanced Network Monitor with Statistics
+Uses only Python built-in libraries - monitors local machine connections
 """
 
-import tkinter as tk
-from tkinter import ttk, scrolledtext, messagebox
+import socket
 import threading
 import time
-import random
-import socket
-import psutil
-import requests
+import struct
 from datetime import datetime, timedelta
-import json
+import tkinter as tk
+from tkinter import ttk, scrolledtext
 from collections import defaultdict, Counter
-import queue
 import subprocess
-import platform
-
-try:
-    import scapy.all as scapy
-    from scapy.layers.inet import IP, TCP, UDP, ICMP
-    from scapy.layers.dns import DNS, DNSQR
-
-    SCAPY_AVAILABLE = True
-except ImportError:
-    SCAPY_AVAILABLE = False
+import re
+import ipaddress
 
 
-class NetworkMonitorGUI:
+class EnhancedNetworkMonitor:
     def __init__(self, root):
         self.root = root
-        self.root.title("Network Traffic Monitor & Analyzer")
-        self.root.geometry("1200x800")
-        self.root.configure(bg='#2b2b2b')
+        self.root.title("Enhanced Network Monitor")
+        self.root.geometry("1000x700")
 
-        # Data storage
-        self.packet_queue = queue.Queue()
-        self.device_stats = defaultdict(lambda: {
-            'total_packets': 0,
-            'suspicious_packets': 0,
-            'ports_accessed': set(),
-            'domains_accessed': set(),
-            'last_seen': None,
-            'threat_level': 'NORMAL'
-        })
-        self.packet_log = []
         self.monitoring = False
-        self.total_packets = 0
+        self.connections = defaultdict(lambda: {'count': 0, 'first_seen': None, 'last_seen': None, 'suspicious': False})
+        self.total_connections = 0
+        self.suspicious_connections = 0
+        self.normal_connections = 0
 
         # Suspicious indicators
-        self.suspicious_domains = {
-            'tempmail.org', 'guerrillamail.com', '10minutemail.com',
-            'mailinator.com', 'bit.ly', 'tinyurl.com', 'tor2web.org',
-            'pastebin.com', 'hastebin.com', 'duckduckgo.com'
-        }
-        self.suspicious_ports = {21, 22, 23, 25, 53, 80, 135, 139, 443, 445, 993, 995, 1433, 3389, 5900, 6667, 8080,
-                                 9050}
-
-        # Color scheme
-        self.colors = {
-            'CRITICAL': '#FF4444',
-            'HIGH': '#FF8800',
-            'MEDIUM': '#FFAA00',
-            'LOW': '#88AA00',
-            'NORMAL': '#00AA88',
-            'bg': '#2b2b2b',
-            'fg': '#ffffff',
-            'secondary': '#404040'
-        }
+        self.suspicious_ports = {21, 22, 23, 25, 135, 139, 445, 1433, 3389, 5900, 6667, 9050}
+        self.suspicious_ips = set()  # Will be populated with known bad IPs
+        self.private_ranges = [
+            ipaddress.IPv4Network('192.168.0.0/16'),
+            ipaddress.IPv4Network('172.16.0.0/12'),
+            ipaddress.IPv4Network('10.0.0.0/8'),
+            ipaddress.IPv4Network('127.0.0.0/8')
+        ]
 
         self.setup_ui()
-        self.get_network_interfaces()
-        self.start_packet_processor()
+        self.log_message("Network Monitor initialized - monitoring LOCAL MACHINE only")
+        self.log_message("Note: This monitors YOUR computer's connections, not entire WiFi network")
 
     def setup_ui(self):
-        """Setup the main user interface"""
-        # Main frame
-        main_frame = tk.Frame(self.root, bg=self.colors['bg'])
-        main_frame.pack(fill='both', expand=True, padx=10, pady=10)
+        # Create notebook for tabs
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(fill='both', expand=True, padx=10, pady=5)
 
-        # Title
-        title_label = tk.Label(main_frame, text="🛡️ Network Traffic Monitor",
-                               font=('Arial', 20, 'bold'),
-                               fg=self.colors['fg'], bg=self.colors['bg'])
-        title_label.pack(pady=(0, 20))
+        # Main monitoring tab
+        self.setup_monitoring_tab()
 
-        # Control panel
-        self.setup_control_panel(main_frame)
+        # Statistics tab
+        self.setup_statistics_tab()
 
-        # Statistics panel
-        self.setup_stats_panel(main_frame)
+        # Control frame at bottom
+        control_frame = tk.Frame(self.root)
+        control_frame.pack(fill='x', padx=10, pady=5)
 
-        # Main content area with tabs
-        self.setup_content_tabs(main_frame)
-
-        # Status bar
-        self.setup_status_bar(main_frame)
-
-    def setup_control_panel(self, parent):
-        """Setup control panel with buttons and settings"""
-        control_frame = tk.Frame(parent, bg=self.colors['secondary'], relief='raised', bd=2)
-        control_frame.pack(fill='x', pady=(0, 10))
-
-        # Interface selection
-        tk.Label(control_frame, text="Interface:", fg=self.colors['fg'],
-                 bg=self.colors['secondary']).pack(side='left', padx=5)
-
-        self.interface_var = tk.StringVar()
-        self.interface_combo = ttk.Combobox(control_frame, textvariable=self.interface_var,
-                                            width=15, state='readonly')
-        self.interface_combo.pack(side='left', padx=5)
-
-        # Control buttons
-        self.start_btn = tk.Button(control_frame, text="▶ Start Monitoring",
-                                   command=self.start_monitoring, bg='#00AA00',
-                                   fg='white', font=('Arial', 10, 'bold'))
+        self.start_btn = tk.Button(control_frame, text="Start Monitoring",
+                                   command=self.start_monitoring, bg='lightgreen')
         self.start_btn.pack(side='left', padx=5)
 
-        self.stop_btn = tk.Button(control_frame, text="⏹ Stop",
-                                  command=self.stop_monitoring, bg='#AA0000',
-                                  fg='white', font=('Arial', 10, 'bold'), state='disabled')
+        self.stop_btn = tk.Button(control_frame, text="Stop",
+                                  command=self.stop_monitoring, bg='lightcoral',
+                                  state='disabled')
         self.stop_btn.pack(side='left', padx=5)
 
-        self.demo_btn = tk.Button(control_frame, text="🎭 Demo Mode",
-                                  command=self.start_demo_mode, bg='#0066AA',
-                                  fg='white', font=('Arial', 10, 'bold'))
-        self.demo_btn.pack(side='left', padx=5)
-
-        self.clear_btn = tk.Button(control_frame, text="🗑 Clear",
-                                   command=self.clear_data, bg='#666666',
-                                   fg='white', font=('Arial', 10, 'bold'))
+        self.clear_btn = tk.Button(control_frame, text="Clear Data",
+                                   command=self.clear_data, bg='lightgray')
         self.clear_btn.pack(side='left', padx=5)
 
-        # Settings
-        self.auto_scroll = tk.BooleanVar(value=True)
-        tk.Checkbutton(control_frame, text="Auto-scroll", variable=self.auto_scroll,
-                       fg=self.colors['fg'], bg=self.colors['secondary'],
-                       selectcolor=self.colors['bg']).pack(side='right', padx=5)
+        tk.Label(control_frame, text="Scope: Local Machine Only",
+                 fg='blue', font=('Arial', 10, 'italic')).pack(side='right', padx=10)
 
-    def setup_stats_panel(self, parent):
-        """Setup statistics display panel"""
-        stats_frame = tk.Frame(parent, bg=self.colors['secondary'], relief='raised', bd=2)
-        stats_frame.pack(fill='x', pady=(0, 10))
-
-        # Stats labels
-        self.stats_labels = {}
-        stats_info = [
-            ('Total Packets', 'total_packets'),
-            ('Active Devices', 'active_devices'),
-            ('Critical Threats', 'critical_threats'),
-            ('Monitoring Time', 'monitoring_time')
-        ]
-
-        for i, (label, key) in enumerate(stats_info):
-            frame = tk.Frame(stats_frame, bg=self.colors['secondary'])
-            frame.pack(side='left', expand=True, fill='x', padx=5)
-
-            tk.Label(frame, text=label, fg=self.colors['fg'],
-                     bg=self.colors['secondary'], font=('Arial', 10)).pack()
-
-            self.stats_labels[key] = tk.Label(frame, text="0", fg='#00FFFF',
-                                              bg=self.colors['secondary'],
-                                              font=('Arial', 14, 'bold'))
-            self.stats_labels[key].pack()
-
-    def setup_content_tabs(self, parent):
-        """Setup tabbed content area"""
-        self.notebook = ttk.Notebook(parent)
-        self.notebook.pack(fill='both', expand=True, pady=(0, 10))
-
-        # Live Feed Tab
-        self.setup_live_feed_tab()
-
-        # Device Analysis Tab
-        self.setup_device_analysis_tab()
-
-        # Threat Summary Tab
-        self.setup_threat_summary_tab()
-
-        # Network Map Tab
-        self.setup_network_map_tab()
-
-    def setup_live_feed_tab(self):
-        """Setup live packet feed tab"""
-        live_frame = tk.Frame(self.notebook, bg=self.colors['bg'])
-        self.notebook.add(live_frame, text="📡 Live Feed")
-
-        # Filter options
-        filter_frame = tk.Frame(live_frame, bg=self.colors['secondary'])
-        filter_frame.pack(fill='x', padx=5, pady=5)
-
-        tk.Label(filter_frame, text="Show:", fg=self.colors['fg'],
-                 bg=self.colors['secondary']).pack(side='left', padx=5)
-
-        self.show_normal = tk.BooleanVar(value=False)
-        self.show_suspicious = tk.BooleanVar(value=True)
-
-        tk.Checkbutton(filter_frame, text="Normal", variable=self.show_normal,
-                       fg=self.colors['fg'], bg=self.colors['secondary'],
-                       selectcolor=self.colors['bg']).pack(side='left', padx=5)
-
-        tk.Checkbutton(filter_frame, text="Suspicious Only", variable=self.show_suspicious,
-                       fg=self.colors['fg'], bg=self.colors['secondary'],
-                       selectcolor=self.colors['bg']).pack(side='left', padx=5)
-
-        # Live feed display
-        self.live_feed = scrolledtext.ScrolledText(live_frame, height=25,
-                                                   bg='#1a1a1a', fg='#00FF00',
-                                                   font=('Courier', 9))
-        self.live_feed.pack(fill='both', expand=True, padx=5, pady=5)
-
-    def setup_device_analysis_tab(self):
-        """Setup device analysis tab"""
-        device_frame = tk.Frame(self.notebook, bg=self.colors['bg'])
-        self.notebook.add(device_frame, text="🖥️ Device Analysis")
-
-        # Device list
-        self.device_tree = ttk.Treeview(device_frame,
-                                        columns=('IP', 'Packets', 'Suspicious', 'Threat Level', 'Last Seen'),
-                                        show='headings', height=15)
-
-        # Configure columns
-        columns = [
-            ('IP', 150),
-            ('Packets', 100),
-            ('Suspicious', 100),
-            ('Threat Level', 120),
-            ('Last Seen', 150)
-        ]
-
-        for col, width in columns:
-            self.device_tree.heading(col, text=col)
-            self.device_tree.column(col, width=width)
-
-        self.device_tree.pack(fill='both', expand=True, padx=5, pady=5)
-
-        # Device details
-        details_frame = tk.Frame(device_frame, bg=self.colors['secondary'], height=100)
-        details_frame.pack(fill='x', padx=5, pady=5)
-        details_frame.pack_propagate(False)
-
-        self.device_details = tk.Text(details_frame, height=6, bg='#1a1a1a',
-                                      fg='#FFFFFF', font=('Courier', 9))
-        self.device_details.pack(fill='both', expand=True, padx=5, pady=5)
-
-        self.device_tree.bind('<<TreeviewSelect>>', self.on_device_select)
-
-    def setup_threat_summary_tab(self):
-        """Setup threat summary tab"""
-        threat_frame = tk.Frame(self.notebook, bg=self.colors['bg'])
-        self.notebook.add(threat_frame, text="⚠️ Threat Summary")
-
-        # Threat level distribution
-        dist_frame = tk.LabelFrame(threat_frame, text="Threat Distribution",
-                                   fg=self.colors['fg'], bg=self.colors['bg'])
-        dist_frame.pack(fill='x', padx=5, pady=5)
-
-        self.threat_bars = {}
-        for level in ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'NORMAL']:
-            frame = tk.Frame(dist_frame, bg=self.colors['bg'])
-            frame.pack(fill='x', padx=5, pady=2)
-
-            tk.Label(frame, text=f"{level}:", fg=self.colors[level],
-                     bg=self.colors['bg'], width=10, anchor='w').pack(side='left')
-
-            self.threat_bars[level] = tk.Label(frame, text="0 (0%)",
-                                               fg=self.colors['fg'], bg=self.colors['bg'])
-            self.threat_bars[level].pack(side='left', padx=10)
-
-        # Recent threats
-        recent_frame = tk.LabelFrame(threat_frame, text="Recent Threats",
-                                     fg=self.colors['fg'], bg=self.colors['bg'])
-        recent_frame.pack(fill='both', expand=True, padx=5, pady=5)
-
-        self.threat_list = scrolledtext.ScrolledText(recent_frame, height=20,
-                                                     bg='#1a1a1a', fg='#FF6666',
-                                                     font=('Courier', 9))
-        self.threat_list.pack(fill='both', expand=True, padx=5, pady=5)
-
-    def setup_network_map_tab(self):
-        """Setup network topology tab"""
-        map_frame = tk.Frame(self.notebook, bg=self.colors['bg'])
-        self.notebook.add(map_frame, text="🗺️ Network Map")
-
-        # Simple network visualization
-        self.network_canvas = tk.Canvas(map_frame, bg='#1a1a1a', height=400)
-        self.network_canvas.pack(fill='both', expand=True, padx=5, pady=5)
-
-        # Network info
-        info_frame = tk.Frame(map_frame, bg=self.colors['secondary'], height=150)
-        info_frame.pack(fill='x', padx=5, pady=5)
-        info_frame.pack_propagate(False)
-
-        self.network_info = tk.Text(info_frame, height=8, bg='#1a1a1a',
-                                    fg='#00FFFF', font=('Courier', 9))
-        self.network_info.pack(fill='both', expand=True, padx=5, pady=5)
-
-    def setup_status_bar(self, parent):
-        """Setup status bar"""
-        self.status_bar = tk.Label(parent, text="Ready", relief='sunken',
-                                   anchor='w', bg=self.colors['secondary'],
-                                   fg=self.colors['fg'])
+        # Status bar
+        self.status_bar = tk.Label(self.root, text="Ready - This monitors YOUR computer's network connections",
+                                   relief='sunken', anchor='w')
         self.status_bar.pack(fill='x')
 
-    def get_network_interfaces(self):
-        """Get available network interfaces"""
-        interfaces = []
+    def setup_monitoring_tab(self):
+        monitor_frame = tk.Frame(self.notebook)
+        self.notebook.add(monitor_frame, text="Live Monitoring")
 
-        try:
-            # Try to get interfaces using psutil
-            for interface, addrs in psutil.net_if_addrs().items():
-                if any(addr.family == socket.AF_INET for addr in addrs):
-                    interfaces.append(interface)
-        except:
-            # Fallback interfaces
-            interfaces = ['eth0', 'wlan0', 'en0', 'Wi-Fi', 'Ethernet']
+        # Stats summary at top
+        stats_frame = tk.LabelFrame(monitor_frame, text="Real-time Statistics")
+        stats_frame.pack(fill='x', padx=5, pady=5)
 
-        if SCAPY_AVAILABLE:
-            try:
-                scapy_interfaces = scapy.get_if_list()
-                interfaces.extend(scapy_interfaces)
-            except:
-                pass
+        stats_row1 = tk.Frame(stats_frame)
+        stats_row1.pack(fill='x', padx=5, pady=2)
 
-        # Remove duplicates and sort
-        interfaces = sorted(list(set(interfaces)))
+        self.total_label = tk.Label(stats_row1, text="Total: 0", font=('Arial', 10, 'bold'))
+        self.total_label.pack(side='left', padx=10)
 
-        self.interface_combo['values'] = interfaces
-        if interfaces:
-            self.interface_combo.set(interfaces[0])
+        self.normal_label = tk.Label(stats_row1, text="Normal: 0", fg='green', font=('Arial', 10, 'bold'))
+        self.normal_label.pack(side='left', padx=10)
 
-    def analyze_packet_suspicion(self, packet_data):
-        """Analyze packet for suspicious activity"""
-        score = 0
-        reasons = []
+        self.suspicious_label = tk.Label(stats_row1, text="Suspicious: 0", fg='red', font=('Arial', 10, 'bold'))
+        self.suspicious_label.pack(side='left', padx=10)
+
+        # Connection list
+        list_frame = tk.LabelFrame(monitor_frame, text="Active Connections")
+        list_frame.pack(fill='both', expand=True, padx=5, pady=5)
+
+        # Treeview for connections
+        self.tree = ttk.Treeview(list_frame,
+                                 columns=('Local', 'Remote', 'State', 'Port', 'Status', 'Count', 'Duration'),
+                                 show='headings', height=12)
+
+        columns = [
+            ('Local', 120, 'Local Address'),
+            ('Remote', 140, 'Remote Address'),
+            ('State', 80, 'State'),
+            ('Port', 60, 'Port'),
+            ('Status', 80, 'Status'),
+            ('Count', 60, 'Count'),
+            ('Duration', 100, 'Duration')
+        ]
+
+        for col, width, heading in columns:
+            self.tree.heading(col, text=heading)
+            self.tree.column(col, width=width)
+
+        # Configure row colors
+        self.tree.tag_configure('suspicious', background='#ffcccc')
+        self.tree.tag_configure('normal', background='#ccffcc')
+
+        scrollbar = ttk.Scrollbar(list_frame, orient='vertical', command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scrollbar.set)
+
+        self.tree.pack(side='left', fill='both', expand=True)
+        scrollbar.pack(side='right', fill='y')
+
+        # Log area
+        log_frame = tk.LabelFrame(monitor_frame, text="Activity Log")
+        log_frame.pack(fill='x', padx=5, pady=5)
+
+        self.log_text = scrolledtext.ScrolledText(log_frame, height=6,
+                                                  font=('Courier', 9))
+        self.log_text.pack(fill='both', expand=True, padx=5, pady=5)
+
+    def setup_statistics_tab(self):
+        stats_frame = tk.Frame(self.notebook)
+        self.notebook.add(stats_frame, text="Statistics & Analysis")
+
+        # Summary statistics
+        summary_frame = tk.LabelFrame(stats_frame, text="Connection Summary")
+        summary_frame.pack(fill='x', padx=5, pady=5)
+
+        self.stats_text = tk.Text(summary_frame, height=8, font=('Courier', 10))
+        self.stats_text.pack(fill='both', expand=True, padx=5, pady=5)
 
         # Port analysis
-        port = packet_data.get('port', 0)
+        port_frame = tk.LabelFrame(stats_frame, text="Port Analysis")
+        port_frame.pack(fill='both', expand=True, padx=5, pady=5)
+
+        self.port_tree = ttk.Treeview(port_frame, columns=('Port', 'Protocol', 'Count', 'Status', 'Description'),
+                                      show='headings', height=10)
+
+        port_columns = [
+            ('Port', 80, 'Port'),
+            ('Protocol', 80, 'Protocol'),
+            ('Count', 80, 'Count'),
+            ('Status', 100, 'Status'),
+            ('Description', 200, 'Description')
+        ]
+
+        for col, width, heading in port_columns:
+            self.port_tree.heading(col, text=heading)
+            self.port_tree.column(col, width=width)
+
+        self.port_tree.tag_configure('suspicious_port', background='#ffcccc')
+        self.port_tree.tag_configure('normal_port', background='#ccffcc')
+
+        port_scrollbar = ttk.Scrollbar(port_frame, orient='vertical', command=self.port_tree.yview)
+        self.port_tree.configure(yscrollcommand=port_scrollbar.set)
+
+        self.port_tree.pack(side='left', fill='both', expand=True)
+        port_scrollbar.pack(side='right', fill='y')
+
+        # Refresh button for statistics
+        refresh_btn = tk.Button(stats_frame, text="Refresh Statistics",
+                                command=self.update_statistics, bg='lightblue')
+        refresh_btn.pack(pady=5)
+
+    def is_ip_suspicious(self, ip):
+        """Check if an IP address is suspicious"""
+        try:
+            ip_obj = ipaddress.IPv4Address(ip)
+
+            # Check if it's a private IP (usually not suspicious)
+            for private_range in self.private_ranges:
+                if ip_obj in private_range:
+                    return False, "Private IP"
+
+            # Check against known suspicious IPs (would need a real database)
+            if ip in self.suspicious_ips:
+                return True, "Known malicious IP"
+
+            # Check if it's in certain suspicious ranges (example)
+            # This is simplified - real implementation would use threat intelligence
+            if str(ip).startswith(('185.', '91.', '46.', '5.')):  # Some known problematic ranges
+                return True, "Potentially suspicious range"
+
+            return False, "External IP"
+
+        except:
+            return False, "Invalid IP"
+
+    def is_port_suspicious(self, port):
+        """Check if a port is suspicious and return description"""
+        port_info = {
+            21: ("FTP", "File Transfer Protocol - potentially insecure"),
+            22: ("SSH", "Secure Shell - monitor for unauthorized access"),
+            23: ("Telnet", "Unencrypted remote access - very insecure"),
+            25: ("SMTP", "Email server - monitor for spam/malware"),
+            53: ("DNS", "Domain Name System"),
+            80: ("HTTP", "Web traffic - unencrypted"),
+            135: ("RPC", "Windows RPC - often targeted"),
+            139: ("NetBIOS", "Windows file sharing - security risk"),
+            443: ("HTTPS", "Secure web traffic"),
+            445: ("SMB", "Windows file sharing - high risk"),
+            993: ("IMAPS", "Secure email"),
+            995: ("POP3S", "Secure email"),
+            1433: ("MSSQL", "Database server - secure carefully"),
+            3389: ("RDP", "Remote Desktop - common attack target"),
+            5900: ("VNC", "Remote desktop - often insecure"),
+            6667: ("IRC", "Chat protocol - sometimes used by malware"),
+            8080: ("HTTP-Alt", "Alternative web port"),
+            9050: ("Tor", "Tor proxy - anonymous traffic")
+        }
+
         if port in self.suspicious_ports:
-            score += 30
-            reasons.append(f"Suspicious port: {port}")
-
-        # Domain analysis
-        domain = packet_data.get('domain', '')
-        for sus_domain in self.suspicious_domains:
-            if sus_domain in domain.lower():
-                score += 40
-                reasons.append(f"Suspicious domain: {domain}")
-                break
-
-        # Traffic pattern analysis
-        if packet_data.get('external_to_external', False):
-            score += 15
-            reasons.append("External-to-external communication")
-
-        # Protocol analysis
-        protocol = packet_data.get('protocol', '').upper()
-        if protocol in ['FTP', 'TELNET', 'SMTP']:
-            score += 20
-            reasons.append(f"Potentially insecure protocol: {protocol}")
-
-        # Size analysis
-        size = packet_data.get('size', 0)
-        if size > 1400:  # Large packets
-            score += 5
-            reasons.append("Large packet size")
-        elif size < 64:  # Very small packets
-            score += 10
-            reasons.append("Unusually small packet")
-
-        return score, reasons
-
-    def categorize_threat(self, score):
-        """Categorize threat based on score"""
-        if score >= 80:
-            return 'CRITICAL'
-        elif score >= 60:
-            return 'HIGH'
-        elif score >= 40:
-            return 'MEDIUM'
-        elif score >= 20:
-            return 'LOW'
+            service, desc = port_info.get(port, ("Unknown", "Potentially suspicious service"))
+            return True, service, desc
         else:
-            return 'NORMAL'
+            # Common safe ports
+            safe_ports = {
+                80: ("HTTP", "Standard web traffic"),
+                443: ("HTTPS", "Secure web traffic"),
+                53: ("DNS", "Domain name resolution"),
+                993: ("IMAPS", "Secure email"),
+                995: ("POP3S", "Secure email")
+            }
+            service, desc = safe_ports.get(port, ("Unknown", "Standard service"))
+            return False, service, desc
 
-    def generate_demo_packet(self):
-        """Generate demo packet data"""
-        local_ips = ['192.168.1.100', '192.168.1.101', '192.168.1.102', '192.168.1.103']
-        external_ips = ['8.8.8.8', '1.1.1.1', '142.250.191.14', '157.240.8.35', '40.91.78.9']
+    def analyze_connection_suspicion(self, local_addr, remote_addr, state, port):
+        """Analyze if a connection is suspicious"""
+        reasons = []
+        suspicious = False
 
-        domains = ['google.com', 'facebook.com', 'suspicious-site.com', 'tempmail.org',
-                   'github.com', 'stackoverflow.com', 'tor2web.org', 'normal-site.com']
+        # Extract IP addresses
+        try:
+            remote_ip = remote_addr.split(':')[0] if ':' in remote_addr else remote_addr
 
-        protocols = ['HTTP', 'HTTPS', 'DNS', 'TCP', 'UDP', 'FTP', 'SSH']
-        ports = [80, 443, 53, 22, 21, 25, 135, 139, 445, 3389, 8080, 9050]
+            # Check IP suspicion
+            ip_suspicious, ip_reason = self.is_ip_suspicious(remote_ip)
+            if ip_suspicious:
+                suspicious = True
+                reasons.append(f"Suspicious IP: {ip_reason}")
 
-        src_ip = random.choice(local_ips)
-        dst_ip = random.choice(external_ips)
+            # Check port suspicion
+            port_suspicious, service, port_desc = self.is_port_suspicious(port)
+            if port_suspicious:
+                suspicious = True
+                reasons.append(f"Suspicious port {port}: {port_desc}")
 
-        packet_data = {
-            'timestamp': datetime.now().strftime("%H:%M:%S.%f")[:-3],
-            'src': src_ip,
-            'dst': dst_ip,
-            'protocol': random.choice(protocols),
-            'port': random.choice(ports),
-            'size': random.randint(64, 1500),
-            'domain': random.choice(domains),
-            'external_to_external': random.choice([True, False])
-        }
+            # Check connection state
+            if state in ['SYN_SENT', 'SYN_RECV']:
+                reasons.append("Connection in progress")
+            elif state == 'ESTABLISHED' and port_suspicious:
+                suspicious = True
+                reasons.append("Active connection on suspicious port")
 
-        return packet_data
+        except Exception as e:
+            reasons.append(f"Analysis error: {e}")
 
-    def process_packet(self, packet_data):
-        """Process a single packet"""
-        score, reasons = self.analyze_packet_suspicion(packet_data)
-        category = self.categorize_threat(score)
+        return suspicious, reasons
 
-        # Update device stats
-        local_ip = packet_data['src'] if packet_data['src'].startswith('192.168') else packet_data['dst']
-        if local_ip.startswith('192.168'):
-            self.device_stats[local_ip]['total_packets'] += 1
-            self.device_stats[local_ip]['last_seen'] = packet_data['timestamp']
-            self.device_stats[local_ip]['ports_accessed'].add(packet_data.get('port', 0))
+    def log_message(self, message):
+        """Add message to log with timestamp"""
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        self.log_text.insert(tk.END, f"[{timestamp}] {message}\n")
+        self.log_text.see(tk.END)
 
-            if category != 'NORMAL':
-                self.device_stats[local_ip]['suspicious_packets'] += 1
-                self.device_stats[local_ip]['threat_level'] = max(
-                    self.device_stats[local_ip]['threat_level'],
-                    category,
-                    key=lambda x: ['NORMAL', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].index(x)
-                )
+    def get_network_connections(self):
+        """Get current network connections using netstat"""
+        try:
+            # Run netstat command
+            if hasattr(subprocess, 'run'):
+                result = subprocess.run(['netstat', '-an'], capture_output=True, text=True, timeout=10)
+                output = result.stdout
+            else:
+                # Fallback for older Python versions
+                import os
+                output = os.popen('netstat -an').read()
 
-        # Create packet info
-        packet_info = {
-            **packet_data,
-            'score': score,
-            'category': category,
-            'reasons': reasons
-        }
+            return self.parse_netstat_output(output)
 
-        self.packet_log.append(packet_info)
-        self.total_packets += 1
+        except Exception as e:
+            self.log_message(f"Error getting connections: {e}")
+            return []
 
-        # Add to queue for UI update
-        self.packet_queue.put(packet_info)
+    def parse_netstat_output(self, output):
+        """Parse netstat output to extract connection info"""
+        connections = []
+        lines = output.split('\n')
 
-    def start_packet_processor(self):
-        """Start packet processing thread"""
+        for line in lines:
+            line = line.strip()
+            if not line or 'Proto' in line or 'Active' in line or line.startswith('tcp'):
+                # Skip headers and some formats
+                pass
 
-        def process_queue():
-            while True:
+            parts = line.split()
+            if len(parts) >= 4:
                 try:
-                    packet = self.packet_queue.get(timeout=0.1)
-                    self.update_ui_with_packet(packet)
-                except queue.Empty:
+                    protocol = parts[0].upper()
+                    local_addr = parts[1] if len(parts) > 1 else "unknown"
+                    remote_addr = parts[2] if len(parts) > 2 else "unknown"
+                    state = parts[3] if len(parts) > 3 else "unknown"
+
+                    # Extract port from remote address
+                    port = 0
+                    try:
+                        if ':' in remote_addr:
+                            port = int(remote_addr.split(':')[-1])
+                    except:
+                        pass
+
+                    # Filter for TCP connections (most interesting for security)
+                    if protocol in ['TCP', 'TCP4', 'TCP6'] and remote_addr != '0.0.0.0:*':
+                        connections.append((local_addr, remote_addr, state, port))
+
+                except (IndexError, ValueError):
                     continue
-                except:
-                    break
 
-        thread = threading.Thread(target=process_queue, daemon=True)
-        thread.start()
+        return connections
 
-    def update_ui_with_packet(self, packet_info):
-        """Update UI with new packet information"""
-        # Update live feed
-        if (packet_info['category'] != 'NORMAL' and self.show_suspicious.get()) or \
-                (packet_info['category'] == 'NORMAL' and self.show_normal.get()):
+    def monitor_network(self):
+        """Main monitoring loop"""
+        while self.monitoring:
+            try:
+                connections = self.get_network_connections()
+                current_time = datetime.now()
 
-            color_code = {
-                'CRITICAL': 'red',
-                'HIGH': 'orange',
-                'MEDIUM': 'yellow',
-                'LOW': 'lightgreen',
-                'NORMAL': 'lightblue'
-            }.get(packet_info['category'], 'white')
+                # Reset counters
+                active_connections = set()
 
-            feed_text = (f"[{packet_info['timestamp']}] "
-                         f"{packet_info['category']} | "
-                         f"{packet_info['src']} -> {packet_info['dst']} | "
-                         f"{packet_info['protocol']} Port:{packet_info.get('port', 'N/A')} | "
-                         f"Score:{packet_info['score']}\n")
+                for local, remote, state, port in connections:
+                    key = f"{local} -> {remote}"
+                    active_connections.add(key)
 
-            if packet_info['reasons']:
-                for reason in packet_info['reasons']:
-                    feed_text += f"  └─ {reason}\n"
-            feed_text += "\n"
+                    # Check if this is a new connection
+                    if key not in self.connections:
+                        self.connections[key]['first_seen'] = current_time
+                        self.connections[key]['count'] = 1
 
-            self.live_feed.insert(tk.END, feed_text)
+                        # Analyze suspicion
+                        suspicious, reasons = self.analyze_connection_suspicion(local, remote, state, port)
+                        self.connections[key]['suspicious'] = suspicious
+                        self.connections[key]['reasons'] = reasons
+                        self.connections[key]['state'] = state
+                        self.connections[key]['port'] = port
 
-            if self.auto_scroll.get():
-                self.live_feed.see(tk.END)
+                        if suspicious:
+                            self.log_message(f"🚨 SUSPICIOUS: {key} - {', '.join(reasons)}")
+                        else:
+                            self.log_message(f"✅ New connection: {key}")
+                    else:
+                        self.connections[key]['count'] += 1
 
-        # Update threat summary
-        if packet_info['category'] != 'NORMAL':
-            threat_text = (f"[{packet_info['timestamp']}] {packet_info['category']} "
-                           f"from {packet_info['src']}: {', '.join(packet_info['reasons'])}\n")
-            self.threat_list.insert(tk.END, threat_text)
+                    self.connections[key]['last_seen'] = current_time
+                    self.connections[key]['state'] = state
+                    self.connections[key]['port'] = port
 
-        # Schedule stats update
-        self.root.after_idle(self.update_statistics)
+                # Remove old connections (not seen in last 30 seconds)
+                cutoff_time = current_time - timedelta(seconds=30)
+                keys_to_remove = []
+                for key, data in self.connections.items():
+                    if data['last_seen'] < cutoff_time:
+                        keys_to_remove.append(key)
+
+                for key in keys_to_remove:
+                    del self.connections[key]
+
+                # Update counters
+                self.total_connections = len(self.connections)
+                self.suspicious_connections = sum(1 for conn in self.connections.values() if conn['suspicious'])
+                self.normal_connections = self.total_connections - self.suspicious_connections
+
+                # Update UI
+                self.root.after(0, self.update_display)
+
+                time.sleep(3)  # Update every 3 seconds
+
+            except Exception as e:
+                self.log_message(f"Monitoring error: {e}")
+                time.sleep(5)
+
+    def update_display(self):
+        """Update the display with current data"""
+        # Clear tree
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        # Add current connections
+        for conn_key, conn_data in self.connections.items():
+            try:
+                # Parse connection key
+                local, remote = conn_key.split(' -> ')
+
+                # Calculate duration
+                if conn_data['first_seen']:
+                    duration = datetime.now() - conn_data['first_seen']
+                    duration_str = f"{duration.total_seconds():.0f}s"
+                else:
+                    duration_str = "Unknown"
+
+                # Determine status
+                status = "SUSPICIOUS" if conn_data['suspicious'] else "NORMAL"
+                tag = 'suspicious' if conn_data['suspicious'] else 'normal'
+
+                # Insert into tree
+                self.tree.insert('', 'end', values=(
+                    local,
+                    remote,
+                    conn_data.get('state', 'UNKNOWN'),
+                    conn_data.get('port', 0),
+                    status,
+                    conn_data['count'],
+                    duration_str
+                ), tags=(tag,))
+
+            except Exception as e:
+                continue
+
+        # Update stats labels
+        self.total_label.config(text=f"Total: {self.total_connections}")
+        self.normal_label.config(text=f"Normal: {self.normal_connections}")
+        self.suspicious_label.config(text=f"Suspicious: {self.suspicious_connections}")
+
+        # Update statistics tab if it's visible
+        if self.notebook.index(self.notebook.select()) == 1:  # Statistics tab
+            self.update_statistics()
 
     def update_statistics(self):
-        """Update statistics display"""
-        # Update basic stats
-        self.stats_labels['total_packets'].config(text=str(self.total_packets))
-        self.stats_labels['active_devices'].config(text=str(len(self.device_stats)))
+        """Update the statistics tab"""
+        # Update summary text
+        self.stats_text.delete(1.0, tk.END)
 
-        # Count critical threats
-        critical_count = sum(1 for p in self.packet_log if p['category'] == 'CRITICAL')
-        self.stats_labels['critical_threats'].config(text=str(critical_count))
+        stats_summary = f"""NETWORK CONNECTION STATISTICS
+{'=' * 50}
 
-        # Update device tree
-        for item in self.device_tree.get_children():
-            self.device_tree.delete(item)
+Total Active Connections: {self.total_connections}
+Normal Connections: {self.normal_connections} ({(self.normal_connections / max(self.total_connections, 1) * 100):.1f}%)
+Suspicious Connections: {self.suspicious_connections} ({(self.suspicious_connections / max(self.total_connections, 1) * 100):.1f}%)
 
-        for ip, stats in self.device_stats.items():
-            suspicious_ratio = (stats['suspicious_packets'] / max(stats['total_packets'], 1)) * 100
-            self.device_tree.insert('', 'end', values=(
-                ip,
-                stats['total_packets'],
-                f"{stats['suspicious_packets']} ({suspicious_ratio:.1f}%)",
-                stats['threat_level'],
-                stats['last_seen'] or 'Never'
-            ))
+SCOPE: This monitors only YOUR computer's network connections
+- Not monitoring other devices on WiFi network
+- Shows outbound connections from your machine
+- Shows inbound connections to your machine
 
-        # Update threat distribution
-        threat_counts = Counter(p['category'] for p in self.packet_log)
-        total = len(self.packet_log) or 1
+CONNECTION BREAKDOWN:
+"""
 
-        for level in self.threat_bars:
-            count = threat_counts.get(level, 0)
-            percentage = (count / total) * 100
-            self.threat_bars[level].config(text=f"{count} ({percentage:.1f}%)")
+        # Analyze by state
+        state_counts = Counter(conn['state'] for conn in self.connections.values())
+        for state, count in state_counts.most_common():
+            stats_summary += f"  {state}: {count}\n"
 
-    def on_device_select(self, event):
-        """Handle device selection in tree"""
-        selection = self.device_tree.selection()
-        if selection:
-            item = self.device_tree.item(selection[0])
-            ip = item['values'][0]
+        stats_summary += "\nSUSPICIOUS ACTIVITY REASONS:\n"
+        reason_counts = Counter()
+        for conn in self.connections.values():
+            if conn['suspicious']:
+                for reason in conn.get('reasons', []):
+                    reason_counts[reason] += 1
 
-            stats = self.device_stats.get(ip, {})
-            details = f"Device Details for {ip}\n"
-            details += "=" * 40 + "\n"
-            details += f"Total Packets: {stats.get('total_packets', 0)}\n"
-            details += f"Suspicious Packets: {stats.get('suspicious_packets', 0)}\n"
-            details += f"Threat Level: {stats.get('threat_level', 'NORMAL')}\n"
-            details += f"Last Seen: {stats.get('last_seen', 'Never')}\n"
-            details += f"Ports Accessed: {', '.join(map(str, sorted(stats.get('ports_accessed', set()))))}\n"
+        for reason, count in reason_counts.most_common():
+            stats_summary += f"  {reason}: {count} connections\n"
 
-            self.device_details.delete(1.0, tk.END)
-            self.device_details.insert(1.0, details)
+        self.stats_text.insert(1.0, stats_summary)
+
+        # Update port analysis
+        for item in self.port_tree.get_children():
+            self.port_tree.delete(item)
+
+        port_counts = Counter(conn['port'] for conn in self.connections.values())
+        for port, count in port_counts.most_common():
+            suspicious, service, description = self.is_port_suspicious(port)
+            status = "SUSPICIOUS" if suspicious else "NORMAL"
+            tag = 'suspicious_port' if suspicious else 'normal_port'
+
+            self.port_tree.insert('', 'end', values=(
+                port, service, count, status, description
+            ), tags=(tag,))
 
     def start_monitoring(self):
         """Start network monitoring"""
@@ -560,136 +503,47 @@ class NetworkMonitorGUI:
             self.monitoring = True
             self.start_btn.config(state='disabled')
             self.stop_btn.config(state='normal')
-            self.demo_btn.config(state='disabled')
+            self.status_bar.config(text="Monitoring your computer's network connections...")
 
-            interface = self.interface_var.get()
-            self.status_bar.config(text=f"Monitoring {interface}...")
+            self.log_message("Network monitoring started")
+            self.log_message("Monitoring LOCAL MACHINE connections only")
 
             # Start monitoring thread
-            def monitor():
-                if SCAPY_AVAILABLE:
-                    try:
-                        def packet_handler(packet):
-                            if not self.monitoring:
-                                return
-
-                            packet_data = self.scapy_packet_to_data(packet)
-                            if packet_data:
-                                self.process_packet(packet_data)
-
-                        scapy.sniff(iface=interface, prn=packet_handler, store=False,
-                                    stop_filter=lambda x: not self.monitoring)
-                    except Exception as e:
-                        self.root.after(0, lambda: messagebox.showerror("Error",
-                                                                        f"Monitoring failed: {str(e)}\nTry Demo Mode instead."))
-                        self.root.after(0, self.stop_monitoring)
-                else:
-                    self.root.after(0, lambda: messagebox.showwarning("Warning",
-                                                                      "Scapy not available. Try Demo Mode instead."))
-                    self.root.after(0, self.stop_monitoring)
-
-            thread = threading.Thread(target=monitor, daemon=True)
-            thread.start()
-
-    def scapy_packet_to_data(self, packet):
-        """Convert scapy packet to our data format"""
-        try:
-            if IP in packet:
-                packet_data = {
-                    'timestamp': datetime.now().strftime("%H:%M:%S.%f")[:-3],
-                    'src': packet[IP].src,
-                    'dst': packet[IP].dst,
-                    'size': len(packet),
-                    'protocol': 'Unknown',
-                    'port': 0,
-                    'domain': '',
-                    'external_to_external': False
-                }
-
-                if TCP in packet:
-                    packet_data['protocol'] = 'TCP'
-                    packet_data['port'] = packet[TCP].dport
-                elif UDP in packet:
-                    packet_data['protocol'] = 'UDP'
-                    packet_data['port'] = packet[UDP].dport
-                elif ICMP in packet:
-                    packet_data['protocol'] = 'ICMP'
-
-                if DNS in packet and packet.haslayer(DNSQR):
-                    packet_data['domain'] = packet[DNSQR].qname.decode('utf-8').rstrip('.')
-
-                return packet_data
-        except:
-            pass
-        return None
-
-    def start_demo_mode(self):
-        """Start demonstration mode with fake data"""
-        if not self.monitoring:
-            self.monitoring = True
-            self.start_btn.config(state='disabled')
-            self.stop_btn.config(state='normal')
-            self.demo_btn.config(state='disabled')
-
-            self.status_bar.config(text="Demo Mode Active - Generating Sample Traffic...")
-
-            def demo_generator():
-                while self.monitoring:
-                    packet_data = self.generate_demo_packet()
-                    self.process_packet(packet_data)
-                    time.sleep(random.uniform(0.1, 2.0))  # Random intervals
-
-            thread = threading.Thread(target=demo_generator, daemon=True)
-            thread.start()
+            self.monitor_thread = threading.Thread(target=self.monitor_network, daemon=True)
+            self.monitor_thread.start()
 
     def stop_monitoring(self):
         """Stop network monitoring"""
         self.monitoring = False
         self.start_btn.config(state='normal')
         self.stop_btn.config(state='disabled')
-        self.demo_btn.config(state='normal')
         self.status_bar.config(text="Monitoring stopped")
 
+        self.log_message("Network monitoring stopped")
+
     def clear_data(self):
-        """Clear all collected data"""
-        self.packet_log.clear()
-        self.device_stats.clear()
-        self.total_packets = 0
+        """Clear all data"""
+        self.connections.clear()
+        self.total_connections = 0
+        self.suspicious_connections = 0
+        self.normal_connections = 0
 
-        # Clear UI elements
-        self.live_feed.delete(1.0, tk.END)
-        self.threat_list.delete(1.0, tk.END)
-        self.device_details.delete(1.0, tk.END)
+        self.log_text.delete(1.0, tk.END)
+        self.stats_text.delete(1.0, tk.END)
 
-        for item in self.device_tree.get_children():
-            self.device_tree.delete(item)
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        for item in self.port_tree.get_children():
+            self.port_tree.delete(item)
 
-        self.update_statistics()
-        self.status_bar.config(text="Data cleared")
+        self.update_display()
+        self.log_message("All data cleared")
 
 
 def main():
-    # Check for required dependencies
-    missing_deps = []
-
-    try:
-        import psutil
-    except ImportError:
-        missing_deps.append('psutil')
-
-    if not SCAPY_AVAILABLE:
-        print("Warning: Scapy not available. Install with: pip install scapy")
-        print("Demo mode will still work without scapy.")
-
-    if missing_deps:
-        print(f"Missing dependencies: {', '.join(missing_deps)}")
-        print(f"Install with: pip install {' '.join(missing_deps)}")
-
-    # Create and run GUI
     root = tk.Tk()
-    app = NetworkMonitorGUI(root)
+    app = EnhancedNetworkMonitor(root)
 
-    # Add window protocol handler
     def on_closing():
         app.stop_monitoring()
         root.destroy()
