@@ -1,0 +1,2477 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Mediola Worksheet Tracker</title>
+  <style>
+    :root{
+      --bg:#eef4f8;
+      --bg2:#e8f0f5;
+      --panel:#ffffff;
+      --panel2:#f7fbfd;
+      --line: rgba(18,52,77,.12);
+      --line2: rgba(18,52,77,.08);
+      --text:#173246;
+      --muted:#5f7a8d;
+      --muted2:#7f97a8;
+      --accent:#1f8aa7;
+      --accent2:#38a8c7;
+      --accentSoft:rgba(31,138,167,.10);
+      --good:#1f9d63;
+      --warn:#d7a126;
+      --bad:#cf5f5f;
+      --bluePill:#dff2f7;
+
+      --r:16px;
+      --r2:12px;
+      --shadow: 0 16px 40px rgba(16,49,74,.08);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: var(--sans);
+      color: var(--text);
+      background:
+        radial-gradient(900px 520px at 5% 0%, rgba(56,168,199,.10), transparent 60%),
+        radial-gradient(700px 420px at 100% 0%, rgba(31,138,167,.08), transparent 58%),
+        linear-gradient(180deg, var(--bg), var(--bg2));
+    }
+
+    *::-webkit-scrollbar{ width:10px; height:10px; }
+    *::-webkit-scrollbar-track{ background: rgba(31,138,167,.06); border-radius: 999px; }
+    *::-webkit-scrollbar-thumb{ background: rgba(31,138,167,.30); border-radius: 999px; border: 2px solid rgba(255,255,255,.8); }
+    *::-webkit-scrollbar-thumb:hover{ background: rgba(31,138,167,.45); }
+
+    header{
+      position: sticky; top:0; z-index:20;
+      background: rgba(255,255,255,.82);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+    }
+    .wrap{ max-width: 1700px; margin:0 auto; padding: 14px; }
+
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-width:260px;
+    }
+    .brandLogo{
+      width:160px;
+      height:54px;
+      display:flex;
+      align-items:center;
+    }
+    .brandLogo img{
+      display:block;
+      max-width:100%;
+      max-height:100%;
+      object-fit:contain;
+    }
+    .brandText h1{
+      margin:0;
+      font-size:15px;
+      font-weight:900;
+      letter-spacing:.2px;
+    }
+    .brandText .sub{
+      margin-top:3px;
+      font-size:12px;
+      color:var(--muted2);
+    }
+
+    .controls{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    .pill{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      min-height:42px;
+      padding:10px 12px;
+      border-radius:999px;
+      background: rgba(255,255,255,.88);
+      border:1px solid var(--line);
+      box-shadow: 0 6px 16px rgba(16,49,74,.04);
+    }
+    .pill input, .pill select{
+      border:none;
+      outline:none;
+      background:transparent;
+      color:var(--text);
+      font-size:13px;
+      min-width:0;
+    }
+    .pill input{ width:220px; }
+
+    select, input[type="text"], input[type="date"], input[type="number"]{
+      color:var(--text);
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:9px 10px;
+      outline:none;
+      min-width:0;
+    }
+    select:focus, input[type="text"]:focus, input[type="date"]:focus, input[type="number"]:focus, textarea:focus{
+      box-shadow: 0 0 0 3px rgba(31,138,167,.14);
+      border-color: rgba(31,138,167,.38);
+    }
+
+    .btn{
+      cursor:pointer;
+      border-radius:999px;
+      border:1px solid rgba(31,138,167,.18);
+      padding:10px 13px;
+      font-weight:800;
+      color:#0f3147;
+      background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(233,247,251,.98));
+      transition: transform .08s ease, filter .15s ease, box-shadow .15s ease;
+      white-space:nowrap;
+      box-shadow: 0 8px 20px rgba(16,49,74,.05);
+    }
+    .btn:hover{ filter: brightness(1.02); }
+    .btn:active{ transform: translateY(1px); }
+    .btn.primary{
+      color:#fff;
+      background: linear-gradient(180deg, var(--accent2), var(--accent));
+      border-color: rgba(31,138,167,.45);
+      box-shadow: 0 14px 28px rgba(31,138,167,.20);
+    }
+    .btn.ghost{
+      background: rgba(255,255,255,.85);
+    }
+    .btn.danger{
+      color:#fff;
+      border-color: rgba(207,95,95,.28);
+      background: linear-gradient(180deg, #e78383, #cf5f5f);
+      box-shadow: 0 12px 24px rgba(207,95,95,.18);
+    }
+    .btn:disabled{
+      opacity:.45;
+      cursor:not-allowed;
+      filter:none;
+      transform:none;
+    }
+
+    main{ padding:14px; }
+    .layout{
+      max-width: 1700px;
+      margin:0 auto;
+      display:grid;
+      grid-template-columns: 360px 1fr 430px;
+      gap:12px;
+      align-items:start;
+      height: calc(100vh - 92px);
+    }
+
+    .panel{
+      height:100%;
+      min-height:0;
+      background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(247,251,253,.98));
+      border:1px solid var(--line);
+      border-radius:var(--r);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+
+    .panelHead{
+      padding:12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      border-bottom:1px solid var(--line);
+      background: linear-gradient(180deg, rgba(247,251,253,.98), rgba(255,255,255,.98));
+    }
+    .panelHead .title{
+      font-size:12px;
+      font-weight:900;
+      letter-spacing:.35px;
+      text-transform:uppercase;
+      color:var(--muted);
+    }
+
+    .panelBody{
+      padding:10px;
+      height:100%;
+      min-height:0;
+    }
+
+    .stack{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      height:100%;
+      min-height:0;
+    }
+
+    .block{
+      background: rgba(255,255,255,.78);
+      border:1px solid var(--line2);
+      border-radius: var(--r2);
+      overflow:hidden;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+    }
+    .blockHead{
+      padding:10px;
+      font-size:12px;
+      font-weight:900;
+      color:var(--muted);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+      border-bottom:1px solid var(--line2);
+      background: rgba(223,242,247,.35);
+    }
+    .blockScroll{
+      padding:8px;
+      overflow:auto;
+      min-height:0;
+    }
+
+    .worksheetItem{
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+      padding:10px;
+      border-radius:12px;
+      border:1px solid rgba(18,52,77,.08);
+      background: rgba(255,255,255,.92);
+      cursor:pointer;
+      transition: transform .08s ease, background .15s ease, border-color .15s ease;
+      margin-bottom:8px;
+    }
+    .worksheetItem:hover{ background: #fff; }
+    .worksheetItem.selected{
+      border-color: rgba(31,138,167,.55);
+      box-shadow: 0 0 0 2px rgba(31,138,167,.12) inset, 0 14px 28px rgba(31,138,167,.08);
+      background: rgba(223,242,247,.62);
+    }
+
+    .wicon{
+      width:38px;
+      height:38px;
+      border-radius:12px;
+      background: linear-gradient(180deg, #eff9fc, #dff2f7);
+      border:1px solid rgba(31,138,167,.18);
+      display:grid;
+      place-items:center;
+      color:var(--accent);
+      font-weight:900;
+      font-family:var(--mono);
+      flex:0 0 auto;
+    }
+
+    .wmeta{ flex:1; min-width:0; }
+    .nameRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      min-width:0;
+    }
+    .wname{
+      font-weight:850;
+      font-size:13px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .wsub{
+      margin-top:4px;
+      font-size:11px;
+      color:var(--muted2);
+      display:flex;
+      gap:6px;
+      flex-wrap:wrap;
+    }
+    .wbar{
+      margin-top:8px;
+      height:7px;
+      background:#e8f1f5;
+      border-radius:999px;
+      overflow:hidden;
+      border:1px solid rgba(18,52,77,.06);
+    }
+    .wbar > i{
+      display:block;
+      height:100%;
+      width:0%;
+      background: linear-gradient(90deg, var(--accent2), var(--accent));
+      border-radius:999px;
+    }
+
+    .ppct{
+      font-size:12px;
+      color:var(--muted2);
+      font-family:var(--mono);
+      padding-top:2px;
+      flex:0 0 auto;
+    }
+
+    .taskRow{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      padding:9px;
+      border-radius:12px;
+      border:1px solid rgba(18,52,77,.08);
+      background: rgba(255,255,255,.94);
+      cursor:pointer;
+      margin-bottom:8px;
+      user-select:none;
+    }
+    .taskRow.selected{
+      border-color: rgba(31,138,167,.55);
+      background: rgba(223,242,247,.68);
+      box-shadow: 0 0 0 2px rgba(31,138,167,.10) inset;
+    }
+
+    .taskChk{
+      width:16px;
+      height:16px;
+      accent-color: var(--accent);
+      flex:0 0 auto;
+    }
+
+    .thumbMini{
+      width:40px;
+      height:30px;
+      border-radius:10px;
+      background: #f2f8fb;
+      border:1px solid rgba(18,52,77,.08);
+      overflow:hidden;
+      flex:0 0 auto;
+    }
+    .thumbMini img{ width:100%; height:100%; object-fit:cover; display:block; }
+
+    .tmeta{ flex:1; min-width:0; }
+    .ttitle{
+      font-weight:900;
+      font-size:12.5px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .tstage{
+      font-size:11px;
+      color:var(--muted2);
+      margin-top:2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .chip{
+      font-size:11px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(18,52,77,.10);
+      background:#f4f8fa;
+      color:var(--muted);
+      font-weight:900;
+      white-space:nowrap;
+    }
+    .chip.done{
+      border-color: rgba(31,157,99,.24);
+      background: rgba(31,157,99,.12);
+      color:#176d47;
+    }
+    .chip.progress{
+      border-color: rgba(215,161,38,.24);
+      background: rgba(215,161,38,.14);
+      color:#876315;
+    }
+    .chip.todo{
+      border-color: rgba(18,52,77,.10);
+      background:#f4f8fa;
+      color:var(--muted);
+    }
+
+    .pillSmall{
+      font-size:11px;
+      font-weight:900;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(18,52,77,.10);
+      background:#f5fafc;
+      color:var(--muted);
+      white-space:nowrap;
+    }
+    .pillSmall.stage{
+      background: var(--bluePill);
+      color:#0f5c74;
+      border-color: rgba(31,138,167,.20);
+    }
+
+    .middle{ display:flex; flex-direction:column; min-height:0; }
+    .middleTools{
+      padding:10px;
+      border-bottom:1px solid var(--line);
+      background: rgba(247,251,253,.9);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .chipsRow{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .filterChip{
+      cursor:pointer;
+      user-select:none;
+      font-size:12px;
+      font-weight:900;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid rgba(18,52,77,.10);
+      background:#fff;
+      color:var(--muted);
+    }
+    .filterChip.active{
+      border-color: rgba(31,138,167,.32);
+      background: rgba(223,242,247,.9);
+      color:#0f5a71;
+    }
+
+    .gridScroll{ padding:10px; overflow:auto; min-height:0; }
+    .cards{
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap:10px;
+    }
+    .card{
+      border-radius:var(--r2);
+      border:1px solid rgba(18,52,77,.10);
+      background:#fff;
+      overflow:hidden;
+      cursor:pointer;
+      transition: transform .08s ease, background .15s ease, border-color .15s ease;
+      min-height:315px;
+      display:flex;
+      flex-direction:column;
+      box-shadow: 0 10px 24px rgba(16,49,74,.04);
+    }
+    .card:hover{ background:#fff; }
+    .card.selected{
+      border-color: rgba(31,138,167,.55);
+      box-shadow: 0 0 0 2px rgba(31,138,167,.10) inset, 0 16px 28px rgba(31,138,167,.08);
+      background: #fcfeff;
+    }
+    .cardHead{
+      padding:10px 10px 8px 10px;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:8px;
+    }
+    .stagePill{
+      font-size:11px;
+      font-weight:900;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(31,138,167,.18);
+      background: var(--bluePill);
+      color:#0f5c74;
+      max-width:74%;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .statusDot{
+      width:10px;
+      height:10px;
+      border-radius:999px;
+      border:1px solid rgba(18,52,77,.16);
+      margin-top:4px;
+      flex:0 0 auto;
+    }
+    .statusDot.done{ background: var(--good); border-color: rgba(31,157,99,.30); }
+    .statusDot.progress{ background: var(--warn); border-color: rgba(215,161,38,.28); }
+    .statusDot.todo{ background: rgba(18,52,77,.18); border-color: rgba(18,52,77,.18); }
+
+    .cardTitle{
+      padding: 0 10px 6px 10px;
+      font-weight:900;
+      font-size:14px;
+      line-height:1.2;
+      min-height:34px;
+    }
+    .cardMeta{
+      padding:0 10px 8px 10px;
+      color:var(--muted2);
+      font-size:11px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+    }
+    .cardImg{
+      margin:0 10px;
+      border-radius:12px;
+      overflow:hidden;
+      border:1px solid rgba(18,52,77,.10);
+      background: #eff7fb;
+      height:130px;
+      flex:0 0 auto;
+    }
+    .cardImg img{ width:100%; height:100%; object-fit:cover; display:block; }
+
+    .cardDesc{
+      padding:10px;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.38;
+      display:-webkit-box;
+      -webkit-line-clamp:3;
+      -webkit-box-orient:vertical;
+      overflow:hidden;
+      min-height:52px;
+    }
+
+    .cardFoot{
+      margin-top:auto;
+      padding:10px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      border-top:1px solid rgba(18,52,77,.06);
+    }
+    .miniBar{
+      flex:1;
+      height:7px;
+      background:#e8f1f5;
+      border:1px solid rgba(18,52,77,.06);
+      border-radius:999px;
+      overflow:hidden;
+    }
+    .miniBar > i{
+      display:block;
+      height:100%;
+      width:0%;
+      background: linear-gradient(90deg, var(--accent2), var(--accent));
+      border-radius:999px;
+    }
+    .pctMini{
+      font-family:var(--mono);
+      color:var(--muted2);
+      font-size:12px;
+      flex:0 0 auto;
+    }
+
+    .right{ display:flex; flex-direction:column; min-height:0; }
+    .detailScroll{ padding:12px; overflow:auto; min-height:0; }
+
+    .detailTitle{
+      font-weight:950;
+      font-size:17px;
+      line-height:1.2;
+      margin:0 0 6px 0;
+    }
+
+    .metaLine{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+      color:var(--muted2);
+      font-size:12px;
+      margin-bottom:10px;
+    }
+
+    .section{
+      margin-top:12px;
+      padding-top:12px;
+      border-top:1px solid rgba(18,52,77,.08);
+    }
+    .section h3{
+      margin:0 0 8px 0;
+      font-size:12px;
+      letter-spacing:.35px;
+      text-transform:uppercase;
+      color:var(--muted);
+    }
+
+    .dropZone{
+      border-radius:14px;
+      border:1px solid rgba(18,52,77,.10);
+      background:#f2f8fb;
+      overflow:hidden;
+      position:relative;
+    }
+    .dropZone.dragover{
+      border-color: rgba(31,138,167,.55);
+      box-shadow: 0 0 0 3px rgba(31,138,167,.12) inset;
+      background: rgba(223,242,247,.9);
+    }
+    .imgHero{ height:220px; }
+    .imgHero img{ width:100%; height:100%; object-fit:cover; display:block; }
+    .dropHint{
+      position:absolute;
+      inset:auto 10px 10px 10px;
+      padding:8px 10px;
+      border-radius:12px;
+      border:1px solid rgba(18,52,77,.10);
+      background: rgba(255,255,255,.88);
+      color:var(--muted);
+      font-size:12px;
+      pointer-events:none;
+    }
+
+    .thumbs{
+      margin-top:10px;
+      display:grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap:8px;
+    }
+    .thumb{
+      border-radius:12px;
+      overflow:hidden;
+      border:1px solid rgba(18,52,77,.10);
+      background:#f2f8fb;
+      height:64px;
+      cursor:pointer;
+    }
+    .thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+
+    textarea{
+      width:100%;
+      min-height:110px;
+      resize:vertical;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:#fff;
+      color:var(--text);
+      padding:10px;
+      outline:none;
+      font-size:13px;
+      line-height:1.4;
+    }
+
+    .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+
+    .grid2{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+    }
+
+    .fileList{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .fileItem{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px;
+      border-radius:12px;
+      border:1px solid rgba(18,52,77,.10);
+      background: rgba(255,255,255,.94);
+    }
+    .fileLeft{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width:0;
+    }
+    .ficon{
+      width:30px;
+      height:30px;
+      border-radius:10px;
+      background: var(--bluePill);
+      border:1px solid rgba(31,138,167,.18);
+      display:grid;
+      place-items:center;
+      color:#0f5c74;
+      flex:0 0 auto;
+    }
+    .fname{
+      font-weight:850;
+      font-size:12.5px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .furl{
+      font-size:12px;
+      color:var(--muted2);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width:220px;
+    }
+    a{ color: var(--accent); text-decoration:none; }
+    a:hover{ text-decoration:underline; }
+
+    .empty{
+      padding:14px;
+      border-radius:14px;
+      border:1px dashed rgba(18,52,77,.18);
+      background: rgba(255,255,255,.65);
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.38;
+    }
+
+    .iconBtn{
+      cursor:pointer;
+      border-radius:10px;
+      border:1px solid rgba(18,52,77,.10);
+      background:#fff;
+      color:var(--muted);
+      padding:6px 8px;
+      font-weight:900;
+      line-height:1;
+      flex:0 0 auto;
+    }
+
+    .modalBackdrop{
+      position:fixed;
+      inset:0;
+      background: rgba(11,29,42,.42);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:14px;
+      z-index:999;
+    }
+    .modalBackdrop.show{ display:flex; }
+    .modal{
+      width:min(760px, 96vw);
+      max-height:min(86vh, 920px);
+      overflow:auto;
+      background: linear-gradient(180deg, #ffffff, #f7fbfd);
+      border:1px solid var(--line);
+      border-radius:18px;
+      box-shadow: 0 28px 80px rgba(16,49,74,.18);
+      padding:12px;
+    }
+    .modalHead{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      border-bottom:1px solid var(--line);
+      padding-bottom:10px;
+      margin-bottom:10px;
+    }
+    .modalTitle{ font-weight:950; }
+    .presetGrid{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap:8px;
+    }
+    .presetItem{
+      border:1px solid rgba(18,52,77,.10);
+      background:#fff;
+      border-radius:12px;
+      padding:10px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
+    .presetItem input{ accent-color: var(--accent); width:16px; height:16px; }
+    .presetName{ font-weight:850; font-size:13px; }
+    .modalFoot{
+      margin-top:10px;
+      display:flex;
+      gap:8px;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap;
+      border-top:1px solid var(--line);
+      padding-top:10px;
+    }
+    .inputPill{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:999px;
+      padding:8px 10px;
+    }
+    .inputPill input{
+      background:transparent;
+      border:none;
+      outline:none;
+      color:var(--text);
+      width:220px;
+    }
+
+    .mobileToggles{ display:none; gap:8px; align-items:center; }
+
+    @media (max-width: 1100px){
+      .layout{ grid-template-columns: 330px 1fr; }
+      .right{ display:none; }
+      .right.show{ display:flex; grid-column:1 / -1; height:55vh; }
+    }
+    @media (max-width: 820px){
+      .layout{ grid-template-columns:1fr; height:auto; }
+      .left, .middle, .right{ height:65vh; }
+      .left{ display:none; }
+      .left.show{ display:flex; }
+      .right{ display:none; }
+      .right.show{ display:flex; }
+      .mobileToggles{ display:flex; }
+      .pill input{ width:140px; }
+      .thumbs{ grid-template-columns: repeat(4, 1fr); }
+      .presetGrid{ grid-template-columns:1fr; }
+      .grid2{ grid-template-columns:1fr; }
+      .brand{ width:100%; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <div class="brandLogo">
+          <img alt="Mediola" src="data:image/png;base64,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bds2Y9u2bcamTZuMnJwc48iRI0ZHR4dxzTXXGB9//LFx2223GTt27DA2bdpk9Pf3Gx6Pp85yo0aNMioqKowDBw4YH374ofHNN98YGzduNLZu3Wr09vYaaWlpxvTp041Vq1YZ9913n7Fw4UJj1apVxgcffGCcOHHCiI+PNzIyMoyXXnrJOHz4sFFRUTF9+aeeesoYNGiQsWvXLuPbb781PvjgA+Ott94y+vr6jA8++MD4/vvvjcrKSsPlchnvvvuukZKSYuTl5RknT540jh07ZnR3dxsul8vIysqKvMxs27bNSElJMXJzc42VK1caP/30k7FmzRpj3LhxRmlpqbFjxw4jGo0aN9xwg9HV1WXU1tYa69evN3Jzc43x48cbV111lXH+/Hlj6dKlxqeffmrExcUZgUBAFEVj1qxZRl1dnfH+++/Xe1wMzz4mT55s/Pjjj8bw4cONt956y/jll1+M/fv3G4WFhcZdd91lfP3110ZHJ4F+lZSUZLz33ntGZWVl3b/JkycbH330kXH//fcbn3/+ufHbb78ZkydPNj755BPjn//8Z13lJk+ebBw5csTYs2ePcffddxvFxcWGJElGdHS08f777xuCIBhvvfWWcf78eSMzM9Po6+szLBaLcfLkSaOlpQUVa2Y6deqU4fP5jDlz5hhvvPGG8c033xgfffSRcfbs2R/rj3Ecv/76q9HQ0GC89957xrBhw4xQKGScPHnS2L17t5Gammq4XC6jvLzcmD17tvHyyy8bH3/8sdHS0mKcPn3aOHTokLFq1Srj2muvNdxut/Hyyy8bXV1dRmtrqzFgwADjiy++MD744APj3Llzxquvvmo4nU7jgw8+MHp7e42enp4PCf7sw2g09vjbb78ZDQ0NxieffGJMnDjRSEtLM86fP29s27bNeOutt4xQKGS0trYaCxcudM+vUCiMzZs3GydOnDBuvPFGIycnhz4UFxebHTt2LGCehvz9+/cb2dnZxpEjR4xPP/3UeOGFF4yXXnrJWLVqldHV1VVvmV27dhkffvihsWzZMuPtt982NmzYYLz66qvG6tWrjZaWFiMWixnNzc3G4MGD3d+rVCpj/PjxRmVlpbF582ZjxowZxhdffGF89dVXxdChQ43m5mbj9OnTxowZM4yEhATj66+/NiZNmmTk5uYaLpfLePPNN423337bWLJkiXHo0CHjrbfe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" />
+        </div>
+        <div class="brandText">
+          <h1>Mediola Worksheet Tracker</h1>
+          <div class="sub">Clients → worksheets → tasks • repair / sharpening / calibration workflow</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="mobileToggles">
+          <button class="btn ghost" id="btnShowLeft">Worksheets</button>
+          <button class="btn ghost" id="btnShowMid">Tasks</button>
+          <button class="btn ghost" id="btnShowRight">Details</button>
+        </div>
+
+        <div class="pill" title="Search tasks">
+          <span style="color:var(--muted2);font-weight:900;">⌕</span>
+          <input id="q" placeholder="Search equipment, owner, service…" />
+        </div>
+
+        <div class="pill" title="Client">
+          <span style="color:var(--muted2);font-weight:900;">Client</span>
+          <select id="clientSel"></select>
+        </div>
+
+        <div class="pill" title="Task scope">
+          <span style="color:var(--muted2);font-weight:900;">Scope</span>
+          <select id="scopeSel"></select>
+        </div>
+
+        <button class="btn primary" id="btnNewTask">+ New Task</button>
+        <button class="btn ghost" id="btnExport">Export</button>
+        <button class="btn ghost" id="btnImport">Import</button>
+        <button class="btn danger" id="btnReset">Reset</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="layout">
+    <section class="panel left" id="leftPanel">
+      <div class="panelHead">
+        <div class="title">Worksheets</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn ghost" id="btnNewWorksheet">+ Worksheet</button>
+          <button class="btn danger" id="btnDeleteWorksheet">Delete worksheet</button>
+        </div>
+      </div>
+
+      <div class="panelBody">
+        <div class="stack">
+          <div class="block" style="flex:1 1 54%;">
+            <div class="blockHead">
+              <span>Worksheet list</span>
+              <span style="font-family:var(--mono); color:var(--muted2);" id="worksheetCount">0</span>
+            </div>
+            <div class="blockScroll" id="worksheetsList"></div>
+          </div>
+
+          <div class="block" style="flex:1 1 46%;">
+            <div class="blockHead">
+              <span>Tasks (quick)</span>
+              <span style="font-family:var(--mono); color:var(--muted2);" id="taskCount">0</span>
+            </div>
+            <div class="blockScroll" id="tasksQuick"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel middle" id="midPanel">
+      <div class="middleTools">
+        <div class="chipsRow" id="statusFilters"></div>
+
+        <div class="row">
+          <div class="pill" style="min-height:38px; padding:8px 10px;">
+            <span style="color:var(--muted2);font-weight:900;">Sort</span>
+            <select id="sortBy">
+              <option value="order">Worksheet order</option>
+              <option value="updated">Recently updated</option>
+              <option value="service">Service type</option>
+              <option value="owner">Owner</option>
+              <option value="status">Status</option>
+              <option value="title">Equipment</option>
+            </select>
+          </div>
+
+          <button class="btn ghost" id="btnOpenPresets">+ Service presets</button>
+        </div>
+      </div>
+
+      <div class="gridScroll">
+        <div class="cards" id="cards"></div>
+      </div>
+    </section>
+
+    <section class="panel right" id="rightPanel">
+      <div class="panelHead">
+        <div class="title">Task details</div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn ghost" id="btnDuplicate">Duplicate</button>
+          <button class="btn danger" id="btnDeleteTask">Delete</button>
+        </div>
+      </div>
+
+      <div class="detailScroll" id="detail"></div>
+    </section>
+  </div>
+</main>
+
+<div class="modalBackdrop" id="presetModal">
+  <div class="modal">
+    <div class="modalHead">
+      <div>
+        <div class="modalTitle">Medical service presets</div>
+        <div style="color:var(--muted2); font-size:12px; margin-top:3px;">
+          Tick the common service steps to add them quickly to the selected worksheet.
+        </div>
+      </div>
+      <button class="btn ghost" id="btnClosePreset" type="button">Close</button>
+    </div>
+
+    <div class="row" style="justify-content:space-between;">
+      <div class="row">
+        <button class="btn ghost" id="btnPresetAll" type="button">Select all</button>
+        <button class="btn ghost" id="btnPresetNone" type="button">Select none</button>
+      </div>
+
+      <label class="pillSmall" style="display:flex; gap:8px; align-items:center;">
+        <input id="chkSkipDupTasks" type="checkbox" checked style="accent-color: var(--accent);">
+        Skip duplicates
+      </label>
+    </div>
+
+    <div style="margin-top:10px;" class="presetGrid" id="presetGrid"></div>
+
+    <div class="modalFoot">
+      <div class="row">
+        <button class="btn primary" id="btnCreateFromChecks" type="button">Create selected tasks</button>
+        <button class="btn ghost" id="btnAddTaskToList" type="button">+ Add service step</button>
+        <button class="btn danger" id="btnRemoveCheckedFromList" type="button">Remove checked</button>
+      </div>
+
+      <div class="row" style="justify-content:flex-end;">
+        <div class="inputPill">
+          <span style="color:var(--muted2); font-weight:900;">Preset</span>
+          <input id="presetName" placeholder="e.g. Endoscope service" />
+        </div>
+        <button class="btn ghost" id="btnSavePreset" type="button">Save</button>
+        <button class="btn ghost" id="btnLoadPreset" type="button">Load</button>
+        <button class="btn danger" id="btnDeletePreset" type="button">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const STORAGE_KEY = "mediola_tracker_v1";
+  const PRESET_KEY = "mediola_presets_v1";
+
+  const STATUS = ["Not Started","In Progress","Done"];
+  const SERVICE_TYPES = [
+    "Inspection",
+    "Cleaning / Decontamination",
+    "Sharpening",
+    "Adjustment / Alignment",
+    "Parts Replacement",
+    "Calibration",
+    "Lubrication",
+    "Electrical Safety Test",
+    "Functional Test",
+    "Final QA / Handover"
+  ];
+
+  const DEFAULT_CLIENT_ID = "client_default";
+  const ALL_CLIENT_ID = "client_all";
+
+  const DEFAULT_OWNERS = [
+    "Szvacsek Ferenc II.",
+    "Görbics Tamás III.",
+    "Jandó Csaba IV.",
+    "Árvai Zoltán V.",
+    "Unassigned"
+  ];
+
+  const DEFAULT_TASK_LIST = [
+    "Incoming inspection",
+    "Cleaning / decontamination",
+    "Sharpening",
+    "Adjustment / alignment",
+    "Parts replacement",
+    "Calibration",
+    "Lubrication",
+    "Functional test",
+    "Electrical safety test",
+    "Final QA / handover"
+  ];
+
+  const IMG = {
+    quality: 0.82,
+    maxEdge: 2048,
+    mime: "image/jpeg"
+  };
+
+  const el = (id) => document.getElementById(id);
+  const uid = (prefix="id") => prefix + "_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16);
+  const clamp = (n,min,max) => Math.max(min, Math.min(max,n));
+  const norm = (s) => String(s || "").trim().toLowerCase();
+
+  const state = {
+    data: null,
+    presets: {},
+    selectedClientId: DEFAULT_CLIENT_ID,
+    selectedWorksheetId: null,
+    selectedTaskId: null,
+    statusFilter: "All",
+    sortBy: "order",
+    query: "",
+    scope: "worksheet"
+  };
+
+  function escapeHtml(s){
+    return String(s ?? "").replace(/[&<>"']/g, m => ({
+      "&":"&amp;",
+      "<":"&lt;",
+      ">":"&gt;",
+      '"':"&quot;",
+      "'":"&#39;"
+    }[m]));
+  }
+
+  function placeholderSvg(label){
+    const txt = encodeURIComponent(label);
+    const svg =
+`<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#f7fbfd"/>
+      <stop offset="1" stop-color="#dff2f7"/>
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#g)"/>
+  <rect x="34" y="34" width="832" height="452" rx="30" fill="rgba(255,255,255,0.8)" stroke="rgba(31,138,167,0.16)"/>
+  <text x="72" y="120" font-family="system-ui,Segoe UI,Arial" font-size="38" font-weight="700" fill="#1f8aa7">${txt}</text>
+  <text x="72" y="176" font-family="system-ui,Segoe UI,Arial" font-size="20" fill="#5f7a8d">Medical equipment task image / service photo</text>
+  <circle cx="790" cy="130" r="50" fill="rgba(31,138,167,0.12)" stroke="rgba(31,138,167,0.20)"/>
+  <path d="M790 104v52M764 130h52" stroke="#1f8aa7" stroke-width="8" stroke-linecap="round"/>
+</svg>`;
+    return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  }
+
+  function save(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data));
+    localStorage.setItem(PRESET_KEY, JSON.stringify(state.presets));
+  }
+
+  function load(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw) return migrate(JSON.parse(raw));
+    }catch(_){}
+    return migrate(defaultData());
+  }
+
+  function loadPresets(){
+    try{
+      const raw = localStorage.getItem(PRESET_KEY);
+      if(raw){
+        state.presets = JSON.parse(raw);
+        return;
+      }
+    }catch(_){}
+    state.presets = {
+      "Default service workflow": DEFAULT_TASK_LIST.slice(),
+      "Scissor sharpening": [
+        "Incoming inspection",
+        "Cleaning / decontamination",
+        "Sharpening",
+        "Adjustment / alignment",
+        "Functional test",
+        "Final QA / handover"
+      ],
+      "Electrosurgery repair": [
+        "Incoming inspection",
+        "Cleaning / decontamination",
+        "Parts replacement",
+        "Calibration",
+        "Electrical safety test",
+        "Functional test",
+        "Final QA / handover"
+      ]
+    };
+  }
+
+  function defaultData(){
+    const clients = [
+      { id: DEFAULT_CLIENT_ID, name: "Mediola / Internal" },
+      { id: uid("client"), name: "SE SZÍV" }
+    ];
+
+    const worksheet = {
+      id: uid("ws"),
+      clientId: clients[1].id,
+      title: "Worksheet 9175",
+      worksheetNo: "9175",
+      worksheetDate: "2025-01-09",
+      referenceNo: "",
+      contactPerson: "",
+      notes: "Service worksheet based on current intake form. Adjust equipment names and quantities as needed.",
+      progress: 0
+    };
+
+    const mkTask = (equipmentName, serviceType, owner, status, progress, equipmentCode, shortDesc, order) => ({
+      id: uid("task"),
+      worksheetId: worksheet.id,
+      title: equipmentName,
+      equipmentCode,
+      serviceType,
+      owner,
+      qty: 1,
+      status,
+      progress,
+      shortDesc,
+      description: shortDesc + "\\n\\nWork performed:\\n- \\n\\nFindings:\\n- \\n\\nParts used:\\n- \\n\\nFinal note:\\n- ",
+      images: [placeholderSvg(serviceType)],
+      files: [],
+      heroIndex: 0,
+      order,
+      updatedAt: Date.now() - ((6 - order) * 1000 * 60 * 10)
+    });
+
+    const tasks = [
+      mkTask("Arcoscope SK 4”", "Inspection", "Szvacsek Ferenc II.", "In Progress", 35, "10-0110", "Incoming inspection and identification of wear / service needs.", 0),
+      mkTask("OCB 160 instrument", "Adjustment / Alignment", "Görbics Tamás III.", "Not Started", 0, "BC5822", "Mechanical alignment and functional check.", 1),
+      mkTask("BET 230 SK 4”", "Parts Replacement", "Jandó Csaba IV.", "In Progress", 55, "26-0107", "Part replacement and reassembly.", 2),
+      mkTask("Micro tip FMS66E", "Calibration", "Árvai Zoltán V.", "Not Started", 0, "03-0195", "Calibration and post-service function verification.", 3),
+      mkTask("FMS66R", "Cleaning / Decontamination", "Szvacsek Ferenc II.", "Done", 100, "4393097", "Cleaning completed, ready for final signoff.", 4),
+      mkTask("General instrument batch", "Sharpening", "Unassigned", "Not Started", 0, "9175-06", "Sharpen cutting edges where applicable, then test movement and bite.", 5)
+    ];
+
+    return { clients, worksheets: [worksheet], tasks, owners: DEFAULT_OWNERS.slice() };
+  }
+
+  function migrate(d){
+    if(!d || typeof d !== "object") d = defaultData();
+    d.clients = Array.isArray(d.clients) ? d.clients : [{ id: DEFAULT_CLIENT_ID, name: "Mediola / Internal" }];
+    if(!d.clients.find(c => c.id === DEFAULT_CLIENT_ID)){
+      d.clients.unshift({ id: DEFAULT_CLIENT_ID, name: "Mediola / Internal" });
+    }
+    d.worksheets = Array.isArray(d.worksheets) ? d.worksheets : [];
+    d.tasks = Array.isArray(d.tasks) ? d.tasks : [];
+    d.owners = Array.isArray(d.owners) && d.owners.length ? d.owners : DEFAULT_OWNERS.slice();
+
+    d.worksheets.forEach(w => {
+      if(!w.id) w.id = uid("ws");
+      if(!w.clientId) w.clientId = DEFAULT_CLIENT_ID;
+      if(!w.title) w.title = "Worksheet";
+      if(!w.worksheetNo) w.worksheetNo = "";
+      if(!w.worksheetDate) w.worksheetDate = "";
+      if(!w.referenceNo) w.referenceNo = "";
+      if(!w.contactPerson) w.contactPerson = "";
+      if(!w.notes) w.notes = "";
+    });
+
+    d.tasks.forEach((t, i) => {
+      if(!t.id) t.id = uid("task");
+      if(!t.worksheetId) t.worksheetId = d.worksheets[0]?.id || "";
+      if(!t.title) t.title = "Equipment task";
+      if(!t.equipmentCode) t.equipmentCode = "";
+      if(!t.serviceType) t.serviceType = "Inspection";
+      if(!t.owner) t.owner = "Unassigned";
+      if(typeof t.qty !== "number") t.qty = 1;
+      if(!t.status) t.status = "Not Started";
+      if(typeof t.progress !== "number") t.progress = 0;
+      if(!t.shortDesc) t.shortDesc = "";
+      if(!t.description) t.description = "";
+      if(!Array.isArray(t.images)) t.images = [];
+      if(!Array.isArray(t.files)) t.files = [];
+      if(typeof t.heroIndex !== "number") t.heroIndex = 0;
+      if(typeof t.order !== "number") t.order = i;
+      if(typeof t.updatedAt !== "number") t.updatedAt = Date.now();
+    });
+
+    normalizeOrder(d);
+    return d;
+  }
+
+  function normalizeOrder(d){
+    const byWs = new Map();
+    d.tasks.forEach(t => {
+      if(!byWs.has(t.worksheetId)) byWs.set(t.worksheetId, []);
+      byWs.get(t.worksheetId).push(t);
+    });
+    byWs.forEach(arr => {
+      arr.sort((a,b) => (a.order || 0) - (b.order || 0) || (b.updatedAt || 0) - (a.updatedAt || 0));
+      arr.forEach((t,i) => t.order = i);
+    });
+  }
+
+  function computeWorksheetProgress(worksheetId){
+    const arr = state.data.tasks.filter(t => t.worksheetId === worksheetId);
+    if(!arr.length) return 0;
+    return Math.round(arr.reduce((s,t) => s + (Number(t.progress) || 0), 0) / arr.length);
+  }
+
+  function currentClientWorksheets(){
+    if(state.selectedClientId === ALL_CLIENT_ID) return state.data.worksheets.slice();
+    return state.data.worksheets.filter(w => w.clientId === state.selectedClientId);
+  }
+
+  function getCurrentWorksheetTasks(){
+    if(!state.selectedWorksheetId) return [];
+    return state.data.tasks
+      .filter(t => t.worksheetId === state.selectedWorksheetId)
+      .slice()
+      .sort((a,b) => (a.order || 0) - (b.order || 0));
+  }
+
+  function getSelectedTask(){
+    return state.data.tasks.find(t => t.id === state.selectedTaskId) || null;
+  }
+
+  function ensureSelections(){
+    const visible = currentClientWorksheets();
+    if(!visible.length){
+      state.selectedWorksheetId = null;
+      state.selectedTaskId = null;
+      return;
+    }
+    if(!visible.find(w => w.id === state.selectedWorksheetId)){
+      state.selectedWorksheetId = visible[0].id;
+    }
+    const tasks = getCurrentWorksheetTasks();
+    if(!tasks.length){
+      state.selectedTaskId = null;
+      return;
+    }
+    if(!tasks.find(t => t.id === state.selectedTaskId)){
+      state.selectedTaskId = tasks[0].id;
+    }
+  }
+
+  function buildClientSelect(){
+    const sel = el("clientSel");
+    sel.innerHTML = "";
+    sel.appendChild(new Option("All clients", ALL_CLIENT_ID));
+    state.data.clients.forEach(c => sel.appendChild(new Option(c.name, c.id)));
+    sel.appendChild(new Option("────────", "__sep__"));
+    sel.appendChild(new Option("➕ New client…", "__new__"));
+    sel.appendChild(new Option("✎ Rename selected…", "__rename__"));
+    sel.appendChild(new Option("🗑 Delete selected…", "__delete__"));
+    sel.value = state.selectedClientId;
+
+    sel.onchange = () => {
+      const v = sel.value;
+
+      if(v === "__new__"){
+        const name = prompt("New client name?");
+        if(name){
+          const c = { id: uid("client"), name: name.trim() };
+          state.data.clients.push(c);
+          state.selectedClientId = c.id;
+          save();
+        }
+        buildClientSelect();
+        ensureSelections();
+        renderAll();
+        return;
+      }
+
+      if(v === "__rename__"){
+        if(state.selectedClientId === ALL_CLIENT_ID){
+          alert("Select a specific client first.");
+        } else {
+          const c = state.data.clients.find(x => x.id === state.selectedClientId);
+          if(c){
+            const name = prompt("Rename client:", c.name);
+            if(name){
+              c.name = name.trim();
+              save();
+            }
+          }
+        }
+        buildClientSelect();
+        renderAll();
+        return;
+      }
+
+      if(v === "__delete__"){
+        if(state.selectedClientId === ALL_CLIENT_ID || state.selectedClientId === DEFAULT_CLIENT_ID){
+          alert("This client cannot be deleted.");
+        } else {
+          const c = state.data.clients.find(x => x.id === state.selectedClientId);
+          const worksheets = state.data.worksheets.filter(w => w.clientId === c.id);
+          const ids = new Set(worksheets.map(w => w.id));
+          const taskCount = state.data.tasks.filter(t => ids.has(t.worksheetId)).length;
+
+          if(confirm(`Delete client "${c.name}"?\\nThis will also delete ${worksheets.length} worksheet(s) and ${taskCount} task(s).`)){
+            state.data.tasks = state.data.tasks.filter(t => !ids.has(t.worksheetId));
+            state.data.worksheets = state.data.worksheets.filter(w => w.clientId !== c.id);
+            state.data.clients = state.data.clients.filter(x => x.id !== c.id);
+            state.selectedClientId = DEFAULT_CLIENT_ID;
+            save();
+          }
+        }
+        buildClientSelect();
+        ensureSelections();
+        renderAll();
+        return;
+      }
+
+      state.selectedClientId = v;
+      ensureSelections();
+      renderAll();
+    };
+  }
+
+  function buildScopeSelect(){
+    const sel = el("scopeSel");
+    sel.innerHTML = "";
+    sel.appendChild(new Option("Selected worksheet", "worksheet"));
+    sel.appendChild(new Option("This client", "client"));
+    sel.appendChild(new Option("All clients", "all"));
+    sel.value = state.scope;
+    sel.onchange = () => {
+      state.scope = sel.value;
+      renderCards();
+    };
+  }
+
+  function buildStatusFilters(){
+    const wrap = el("statusFilters");
+    wrap.innerHTML = "";
+    ["All", ...STATUS].forEach(s => {
+      const b = document.createElement("div");
+      b.className = "filterChip" + (state.statusFilter === s ? " active" : "");
+      b.textContent = s;
+      b.onclick = () => {
+        state.statusFilter = s;
+        buildStatusFilters();
+        renderCards();
+      };
+      wrap.appendChild(b);
+    });
+  }
+
+  function taskMatchesFilters(t){
+    if(state.statusFilter !== "All" && t.status !== state.statusFilter) return false;
+
+    const q = norm(state.query);
+    if(q){
+      const hay = norm([
+        t.title,
+        t.equipmentCode,
+        t.serviceType,
+        t.owner,
+        t.shortDesc,
+        t.description
+      ].join(" "));
+      if(!hay.includes(q)) return false;
+    }
+
+    const worksheet = state.data.worksheets.find(w => w.id === t.worksheetId);
+    if(!worksheet) return false;
+
+    if(state.scope === "worksheet") return t.worksheetId === state.selectedWorksheetId;
+    if(state.scope === "client"){
+      return state.selectedClientId === ALL_CLIENT_ID || worksheet.clientId === state.selectedClientId;
+    }
+    return true;
+  }
+
+  function sortedTasksForGrid(){
+    const tasks = state.data.tasks.filter(taskMatchesFilters);
+
+    switch(state.sortBy){
+      case "updated":
+        tasks.sort((a,b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+        break;
+      case "service":
+        tasks.sort((a,b) => (a.serviceType || "").localeCompare(b.serviceType || ""));
+        break;
+      case "owner":
+        tasks.sort((a,b) => (a.owner || "").localeCompare(b.owner || ""));
+        break;
+      case "status":
+        tasks.sort((a,b) => STATUS.indexOf(a.status) - STATUS.indexOf(b.status));
+        break;
+      case "title":
+        tasks.sort((a,b) => (a.title || "").localeCompare(b.title || ""));
+        break;
+      default:
+        tasks.sort((a,b) => {
+          if(a.worksheetId === b.worksheetId) return (a.order || 0) - (b.order || 0);
+          return (b.updatedAt || 0) - (a.updatedAt || 0);
+        });
+    }
+    return tasks;
+  }
+
+  function statusToChipClass(s){
+    if(s === "Done") return "done";
+    if(s === "In Progress") return "progress";
+    return "todo";
+  }
+
+  function statusToDotClass(s){
+    if(s === "Done") return "done";
+    if(s === "In Progress") return "progress";
+    return "todo";
+  }
+
+  function renderWorksheets(){
+    const list = el("worksheetsList");
+    list.innerHTML = "";
+    const worksheets = currentClientWorksheets();
+    el("worksheetCount").textContent = worksheets.length;
+
+    if(!worksheets.length){
+      list.innerHTML = `<div class="empty">No worksheets yet. Create a new worksheet for a client.</div>`;
+      return;
+    }
+
+    worksheets.forEach((w, idx) => {
+      const item = document.createElement("div");
+      item.className = "worksheetItem" + (w.id === state.selectedWorksheetId ? " selected" : "");
+      item.onclick = () => {
+        state.selectedWorksheetId = w.id;
+        const tasks = getCurrentWorksheetTasks();
+        state.selectedTaskId = tasks[0]?.id || null;
+        renderAll();
+        showPanel("mid");
+      };
+
+      const icon = document.createElement("div");
+      icon.className = "wicon";
+      icon.textContent = idx + 1;
+
+      const meta = document.createElement("div");
+      meta.className = "wmeta";
+
+      const nameRow = document.createElement("div");
+      nameRow.className = "nameRow";
+
+      const name = document.createElement("div");
+      name.className = "wname";
+      name.textContent = w.title;
+
+      const editBtn = document.createElement("button");
+      editBtn.className = "iconBtn";
+      editBtn.textContent = "✎";
+      editBtn.title = "Edit worksheet header";
+      editBtn.onclick = (e) => {
+        e.stopPropagation();
+        editWorksheetHeader(w);
+      };
+
+      nameRow.append(name, editBtn);
+
+      const sub = document.createElement("div");
+      sub.className = "wsub";
+      const client = state.data.clients.find(c => c.id === w.clientId);
+      sub.innerHTML = `
+        <span>Client: ${escapeHtml(client?.name || "—")}</span>
+        <span>•</span>
+        <span>No: ${escapeHtml(w.worksheetNo || "—")}</span>
+        <span>•</span>
+        <span>Date: ${escapeHtml(w.worksheetDate || "—")}</span>
+      `;
+
+      const bar = document.createElement("div");
+      bar.className = "wbar";
+      const fill = document.createElement("i");
+      const p = computeWorksheetProgress(w.id);
+      fill.style.width = p + "%";
+      bar.appendChild(fill);
+
+      const pct = document.createElement("div");
+      pct.className = "ppct";
+      pct.textContent = p + "%";
+
+      meta.append(nameRow, sub, bar);
+      item.append(icon, meta, pct);
+      list.appendChild(item);
+    });
+  }
+
+  function renderTasksQuick(){
+    const list = el("tasksQuick");
+    list.innerHTML = "";
+
+    const tasks = getCurrentWorksheetTasks();
+    el("taskCount").textContent = tasks.length;
+
+    if(!state.selectedWorksheetId){
+      list.innerHTML = `<div class="empty">No worksheet selected.</div>`;
+      return;
+    }
+    if(!tasks.length){
+      list.innerHTML = `<div class="empty">This worksheet has no tasks yet.</div>`;
+      return;
+    }
+
+    tasks.forEach(t => {
+      const row = document.createElement("div");
+      row.className = "taskRow" + (t.id === state.selectedTaskId ? " selected" : "");
+      row.onclick = () => {
+        state.selectedTaskId = t.id;
+        renderTasksQuick();
+        renderCards();
+        renderDetail();
+        showPanel("right");
+      };
+
+      const chk = document.createElement("input");
+      chk.type = "checkbox";
+      chk.className = "taskChk";
+      chk.checked = t.status === "Done";
+      chk.onclick = async (e) => {
+        e.stopPropagation();
+        t.status = chk.checked ? "Done" : "Not Started";
+        t.progress = chk.checked ? 100 : 0;
+        t.updatedAt = Date.now();
+        save();
+        renderAll();
+      };
+
+      const thumb = document.createElement("div");
+      thumb.className = "thumbMini";
+      const img = document.createElement("img");
+      img.alt = "";
+      img.src = t.images?.[0] || placeholderSvg(t.serviceType);
+      thumb.appendChild(img);
+
+      const meta = document.createElement("div");
+      meta.className = "tmeta";
+      const title = document.createElement("div");
+      title.className = "ttitle";
+      title.textContent = t.title;
+      const stage = document.createElement("div");
+      stage.className = "tstage";
+      stage.textContent = `${t.serviceType} • ${t.owner}`;
+      meta.append(title, stage);
+
+      const chip = document.createElement("div");
+      chip.className = "chip " + statusToChipClass(t.status);
+      chip.textContent = t.status;
+
+      row.append(chk, thumb, meta, chip);
+      list.appendChild(row);
+    });
+  }
+
+  function renderCards(){
+    const cards = el("cards");
+    cards.innerHTML = "";
+
+    const tasks = sortedTasksForGrid();
+    if(!tasks.length){
+      cards.innerHTML = `<div class="empty" style="grid-column:1 / -1;">No tasks match the current filters.</div>`;
+      return;
+    }
+
+    tasks.forEach(t => {
+      const card = document.createElement("div");
+      card.className = "card" + (t.id === state.selectedTaskId ? " selected" : "");
+      card.onclick = () => {
+        state.selectedWorksheetId = t.worksheetId;
+        state.selectedTaskId = t.id;
+        renderAll();
+        showPanel("right");
+      };
+
+      const worksheet = state.data.worksheets.find(w => w.id === t.worksheetId);
+
+      const head = document.createElement("div");
+      head.className = "cardHead";
+      const stage = document.createElement("div");
+      stage.className = "stagePill";
+      stage.textContent = t.serviceType;
+      const dot = document.createElement("div");
+      dot.className = "statusDot " + statusToDotClass(t.status);
+      head.append(stage, dot);
+
+      const title = document.createElement("div");
+      title.className = "cardTitle";
+      title.textContent = t.title;
+
+      const meta = document.createElement("div");
+      meta.className = "cardMeta";
+      meta.innerHTML = `
+        <span class="pillSmall">${escapeHtml(t.owner || "Unassigned")}</span>
+        <span class="pillSmall">Code: ${escapeHtml(t.equipmentCode || "—")}</span>
+        <span class="pillSmall">WS: ${escapeHtml(worksheet?.worksheetNo || "—")}</span>
+      `;
+
+      const imgWrap = document.createElement("div");
+      imgWrap.className = "cardImg";
+      const img = document.createElement("img");
+      img.alt = "";
+      img.src = t.images?.[t.heroIndex || 0] || placeholderSvg(t.serviceType);
+      imgWrap.appendChild(img);
+
+      const desc = document.createElement("div");
+      desc.className = "cardDesc";
+      desc.textContent = t.shortDesc || "";
+
+      const foot = document.createElement("div");
+      foot.className = "cardFoot";
+      const bar = document.createElement("div");
+      bar.className = "miniBar";
+      const fill = document.createElement("i");
+      fill.style.width = clamp(Number(t.progress) || 0, 0, 100) + "%";
+      bar.appendChild(fill);
+      const pct = document.createElement("div");
+      pct.className = "pctMini";
+      pct.textContent = clamp(Number(t.progress) || 0, 0, 100) + "%";
+      foot.append(bar, pct);
+
+      card.append(head, title, meta, imgWrap, desc, foot);
+      cards.appendChild(card);
+    });
+  }
+
+  function renderFilesList(task){
+    const list = el("files");
+    list.innerHTML = "";
+    const files = task.files || [];
+
+    if(!files.length){
+      list.innerHTML = `<div class="empty">No linked files yet.</div>`;
+      return;
+    }
+
+    files.forEach((f, i) => {
+      const item = document.createElement("div");
+      item.className = "fileItem";
+
+      const left = document.createElement("div");
+      left.className = "fileLeft";
+      left.innerHTML = `
+        <div class="ficon">⧉</div>
+        <div style="min-width:0;">
+          <div class="fname">${escapeHtml(f.name || "File")}</div>
+          <div class="furl">${escapeHtml(f.url || "")}</div>
+        </div>
+      `;
+
+      const right = document.createElement("div");
+      right.className = "row";
+
+      const a = document.createElement("a");
+      a.href = f.url || "#";
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.textContent = "Open";
+
+      const del = document.createElement("button");
+      del.className = "btn ghost";
+      del.textContent = "Remove";
+      del.onclick = () => {
+        task.files.splice(i,1);
+        task.updatedAt = Date.now();
+        save();
+        renderFilesList(task);
+      };
+
+      right.append(a, del);
+      item.append(left, right);
+      list.appendChild(item);
+    });
+  }
+
+  function renderDetail(){
+    const root = el("detail");
+    const t = getSelectedTask();
+
+    if(!t){
+      root.innerHTML = `<div class="empty">Select a task to see its details.</div>`;
+      return;
+    }
+
+    const worksheet = state.data.worksheets.find(w => w.id === t.worksheetId);
+    const client = state.data.clients.find(c => c.id === worksheet?.clientId);
+    const heroUrl = t.images?.[t.heroIndex || 0] || placeholderSvg(t.serviceType);
+
+    root.innerHTML = `
+      <div>
+        <div class="detailTitle">${escapeHtml(t.title)}</div>
+
+        <div class="metaLine">
+          <span class="pillSmall stage">${escapeHtml(t.serviceType)}</span>
+          <span class="chip ${statusToChipClass(t.status)}">${escapeHtml(t.status)}</span>
+          <span class="pillSmall">${escapeHtml(client?.name || "Unknown client")}</span>
+          <span class="pillSmall">Worksheet ${escapeHtml(worksheet?.worksheetNo || "—")}</span>
+          <span class="pillSmall">${escapeHtml(t.owner || "Unassigned")}</span>
+        </div>
+
+        <div class="section" style="margin-top:0; padding-top:0; border-top:none;">
+          <h3>Equipment photo / service image</h3>
+          <div class="dropZone imgHero" id="dropZone">
+            <img alt="" src="${heroUrl}">
+            <div class="dropHint">Drop images here or use Upload</div>
+          </div>
+
+          <div class="thumbs" id="thumbs"></div>
+
+          <div class="row" style="margin-top:10px;">
+            <label class="btn ghost" for="imgUpload">+ Upload images</label>
+            <input id="imgUpload" type="file" accept="image/*" multiple style="display:none;" />
+            <button class="btn ghost" id="btnRemoveImg">Remove current</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>Task setup</h3>
+          <div class="grid2">
+            <div>
+              <div style="font-size:12px; color:var(--muted2); margin-bottom:6px;">Equipment name</div>
+              <input id="taskTitleInput" type="text" value="${escapeHtml(t.title)}" />
+            </div>
+            <div>
+              <div style="font-size:12px; color:var(--muted2); margin-bottom:6px;">Equipment code / asset no.</div>
+              <input id="taskCodeInput" type="text" value="${escapeHtml(t.equipmentCode || "")}" />
+            </div>
+            <div>
+              <div style="font-size:12px; color:var(--muted2); margin-bottom:6px;">Service type</div>
+              <select id="taskServiceType"></select>
+            </div>
+            <div>
+              <div style="font-size:12px; color:var(--muted2); margin-bottom:6px;">Task owner</div>
+              <select id="taskOwner"></select>
+            </div>
+            <div>
+              <div style="font-size:12px; color:var(--muted2); margin-bottom:6px;">Quantity</div>
+              <input id="taskQty" type="number" min="1" value="${escapeHtml(t.qty || 1)}" />
+            </div>
+            <div>
+              <div style="font-size:12px; color:var(--muted2); margin-bottom:6px;">Status</div>
+              <select id="taskStatus"></select>
+            </div>
+          </div>
+
+          <div style="margin-top:10px;">
+            <div style="font-size:12px; color:var(--muted2); margin-bottom:6px;">Short description</div>
+            <input id="taskShortDesc" type="text" value="${escapeHtml(t.shortDesc || "")}" />
+          </div>
+
+          <div class="row" style="margin-top:10px;">
+            <button class="btn primary" id="btnSaveSetup">Save task setup</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>Work notes</h3>
+          <textarea id="desc">${escapeHtml(t.description || "")}</textarea>
+          <div class="row" style="margin-top:10px;">
+            <button class="btn primary" id="btnSaveDesc">Save notes</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>Status & progress</h3>
+          <div class="row">
+            <button class="btn ghost" id="sNS">Not Started</button>
+            <button class="btn ghost" id="sIP">In Progress</button>
+            <button class="btn ghost" id="sDN">Done</button>
+          </div>
+
+          <div class="row" style="margin-top:10px;">
+            <div style="flex:1; min-width:200px;">
+              <div style="color:var(--muted2); font-size:12px; margin-bottom:6px;">Progress: <span id="progLabel">${clamp(Number(t.progress)||0,0,100)}%</span></div>
+              <input id="prog" type="range" min="0" max="100" value="${clamp(Number(t.progress)||0,0,100)}" style="width:100%;" />
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>Links / files</h3>
+          <div class="fileList" id="files"></div>
+          <div class="row" style="margin-top:10px;">
+            <input id="fileName" placeholder="Filename" style="flex:1; min-width:180px;" />
+            <input id="fileUrl" placeholder="URL" style="flex:1; min-width:180px;" />
+            <button class="btn primary" id="btnAddFile">Add</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>Worksheet header</h3>
+          <div class="grid2">
+            <div>
+              <div style="font-size:12px; color:var(--muted2); margin-bottom:6px;">Client</div>
+              <select id="worksheetClient"></select>
+            </div>
+            <div>
+              <div style="font-size:12px; color:var(--muted2); margin-bottom:6px;">Worksheet title</div>
+              <input id="worksheetTitle" type="text" value="${escapeHtml(worksheet?.title || "")}" />
+            </div>
+            <div>
+              <div style="font-size:12px; color:var(--muted2); margin-bottom:6px;">Worksheet no.</div>
+              <input id="worksheetNo" type="text" value="${escapeHtml(worksheet?.worksheetNo || "")}" />
+            </div>
+            <div>
+              <div style="font-size:12px; color:var(--muted2); margin-bottom:6px;">Date</div>
+              <input id="worksheetDate" type="date" value="${escapeHtml(worksheet?.worksheetDate || "")}" />
+            </div>
+            <div>
+              <div style="font-size:12px; color:var(--muted2); margin-bottom:6px;">Reference no.</div>
+              <input id="worksheetRef" type="text" value="${escapeHtml(worksheet?.referenceNo || "")}" />
+            </div>
+            <div>
+              <div style="font-size:12px; color:var(--muted2); margin-bottom:6px;">Contact person</div>
+              <input id="worksheetContact" type="text" value="${escapeHtml(worksheet?.contactPerson || "")}" />
+            </div>
+          </div>
+
+          <div style="margin-top:10px;">
+            <div style="font-size:12px; color:var(--muted2); margin-bottom:6px;">Worksheet notes</div>
+            <textarea id="worksheetNotes">${escapeHtml(worksheet?.notes || "")}</textarea>
+          </div>
+
+          <div class="row" style="margin-top:10px;">
+            <button class="btn primary" id="btnSaveWorksheet">Save worksheet header</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const serviceSel = el("taskServiceType");
+    SERVICE_TYPES.forEach(s => serviceSel.appendChild(new Option(s, s)));
+    serviceSel.value = t.serviceType || SERVICE_TYPES[0];
+
+    const ownerSel = el("taskOwner");
+    state.data.owners.forEach(o => ownerSel.appendChild(new Option(o, o)));
+    ownerSel.appendChild(new Option("➕ Add new owner…", "__new__"));
+    ownerSel.value = t.owner || "Unassigned";
+    ownerSel.onchange = () => {
+      if(ownerSel.value === "__new__"){
+        const name = prompt("New owner / technician name?");
+        if(name){
+          state.data.owners.push(name.trim());
+          save();
+          renderDetail();
+        } else {
+          renderDetail();
+        }
+      }
+    };
+
+    const statusSel = el("taskStatus");
+    STATUS.forEach(s => statusSel.appendChild(new Option(s, s)));
+    statusSel.value = t.status || "Not Started";
+
+    const wsClientSel = el("worksheetClient");
+    state.data.clients.forEach(c => wsClientSel.appendChild(new Option(c.name, c.id)));
+    wsClientSel.value = worksheet?.clientId || DEFAULT_CLIENT_ID;
+
+    const thumbsEl = el("thumbs");
+    thumbsEl.innerHTML = "";
+    (t.images || []).slice(0,10).forEach((src, i) => {
+      const d = document.createElement("div");
+      d.className = "thumb";
+      d.innerHTML = `<img alt="" src="${src}">`;
+      d.onclick = () => {
+        t.heroIndex = i;
+        t.updatedAt = Date.now();
+        save();
+        renderDetail();
+        renderCards();
+      };
+      thumbsEl.appendChild(d);
+    });
+
+    renderFilesList(t);
+    attachDropZoneHandlers(el("dropZone"), t);
+
+    el("imgUpload").onchange = async (e) => {
+      const files = e.target.files;
+      if(!files || !files.length) return;
+      await addImagesToTask(t, files);
+      e.target.value = "";
+    };
+
+    el("btnRemoveImg").onclick = () => {
+      if(!t.images?.length) return;
+      t.images.splice(t.heroIndex || 0, 1);
+      t.heroIndex = 0;
+      t.updatedAt = Date.now();
+      save();
+      renderAll();
+    };
+
+    el("btnSaveSetup").onclick = () => {
+      t.title = el("taskTitleInput").value.trim() || "Equipment task";
+      t.equipmentCode = el("taskCodeInput").value.trim();
+      t.serviceType = el("taskServiceType").value;
+      t.owner = el("taskOwner").value === "__new__" ? "Unassigned" : el("taskOwner").value;
+      t.qty = clamp(Number(el("taskQty").value) || 1, 1, 999);
+      t.status = el("taskStatus").value;
+      t.shortDesc = el("taskShortDesc").value.trim();
+      if(t.status === "Done") t.progress = 100;
+      if(t.status === "Not Started" && t.progress > 0) t.progress = 0;
+      t.updatedAt = Date.now();
+      save();
+      renderAll();
+    };
+
+    el("btnSaveDesc").onclick = () => {
+      t.description = el("desc").value;
+      t.updatedAt = Date.now();
+      save();
+      renderCards();
+      renderTasksQuick();
+    };
+
+    el("sNS").onclick = () => applyStatus(t, "Not Started");
+    el("sIP").onclick = () => applyStatus(t, "In Progress");
+    el("sDN").onclick = () => applyStatus(t, "Done");
+
+    el("prog").oninput = (e) => el("progLabel").textContent = e.target.value + "%";
+    el("prog").onchange = (e) => {
+      const v = clamp(Number(e.target.value) || 0, 0, 100);
+      t.progress = v;
+      t.status = v <= 0 ? "Not Started" : v >= 100 ? "Done" : "In Progress";
+      t.updatedAt = Date.now();
+      save();
+      renderAll();
+    };
+
+    el("btnAddFile").onclick = () => {
+      const name = el("fileName").value.trim();
+      const url = el("fileUrl").value.trim();
+      if(!name || !url) return alert("Add both a filename and a URL.");
+      t.files.unshift({ name, url });
+      t.updatedAt = Date.now();
+      save();
+      renderFilesList(t);
+      el("fileName").value = "";
+      el("fileUrl").value = "";
+    };
+
+    el("btnSaveWorksheet").onclick = () => {
+      if(!worksheet) return;
+      worksheet.clientId = el("worksheetClient").value;
+      worksheet.title = el("worksheetTitle").value.trim() || "Worksheet";
+      worksheet.worksheetNo = el("worksheetNo").value.trim();
+      worksheet.worksheetDate = el("worksheetDate").value;
+      worksheet.referenceNo = el("worksheetRef").value.trim();
+      worksheet.contactPerson = el("worksheetContact").value.trim();
+      worksheet.notes = el("worksheetNotes").value;
+      save();
+      buildClientSelect();
+      ensureSelections();
+      renderAll();
+    };
+  }
+
+  function editWorksheetHeader(w){
+    const title = prompt("Worksheet title:", w.title);
+    if(title === null) return;
+    const number = prompt("Worksheet number:", w.worksheetNo || "");
+    if(number === null) return;
+    w.title = title.trim() || w.title;
+    w.worksheetNo = number.trim();
+    save();
+    renderAll();
+  }
+
+  function applyStatus(task, status){
+    task.status = status;
+    if(status === "Done") task.progress = 100;
+    if(status === "Not Started") task.progress = 0;
+    if(status === "In Progress" && task.progress <= 0) task.progress = 25;
+    task.updatedAt = Date.now();
+    save();
+    renderAll();
+  }
+
+  function renderAll(){
+    renderWorksheets();
+    renderTasksQuick();
+    renderCards();
+    renderDetail();
+  }
+
+  function showPanel(which){
+    const left = el("leftPanel");
+    const mid = el("midPanel");
+    const right = el("rightPanel");
+    if(window.matchMedia("(min-width: 821px)").matches) return;
+    left.classList.remove("show");
+    mid.classList.remove("show");
+    right.classList.remove("show");
+    if(which === "left") left.classList.add("show");
+    if(which === "mid") mid.classList.add("show");
+    if(which === "right") right.classList.add("show");
+  }
+
+  function getMasterTaskList(){
+    const set = new Set(DEFAULT_TASK_LIST);
+    Object.values(state.presets).forEach(arr => (arr || []).forEach(x => set.add(String(x).trim())));
+    return Array.from(set).filter(Boolean).sort((a,b) => a.localeCompare(b));
+  }
+
+  function renderPresetGrid(checkedSet = null){
+    const grid = el("presetGrid");
+    grid.innerHTML = "";
+    const set = checkedSet || new Set();
+    getMasterTaskList().forEach(name => {
+      const row = document.createElement("label");
+      row.className = "presetItem";
+      row.innerHTML = `
+        <input type="checkbox" data-name="${escapeHtml(name)}" ${set.has(name) ? "checked" : ""}>
+        <div class="presetName">${escapeHtml(name)}</div>
+      `;
+      grid.appendChild(row);
+    });
+  }
+
+  function getCheckedPresetItems(){
+    return Array.from(el("presetGrid").querySelectorAll("input[type=checkbox]:checked")).map(x => x.dataset.name);
+  }
+
+  function inferServiceType(title){
+    const t = norm(title);
+    if(t.includes("sharpen")) return "Sharpening";
+    if(t.includes("calib")) return "Calibration";
+    if(t.includes("clean")) return "Cleaning / Decontamination";
+    if(t.includes("electrical")) return "Electrical Safety Test";
+    if(t.includes("test")) return "Functional Test";
+    if(t.includes("replace")) return "Parts Replacement";
+    if(t.includes("adjust") || t.includes("align")) return "Adjustment / Alignment";
+    if(t.includes("lubri")) return "Lubrication";
+    if(t.includes("handover") || t.includes("qa")) return "Final QA / Handover";
+    return "Inspection";
+  }
+
+  async function createTasksFromTitles(worksheetId, titles, skipDuplicates = true){
+    if(!worksheetId) return;
+    const existing = new Set(state.data.tasks.filter(t => t.worksheetId === worksheetId).map(t => norm(t.title)));
+    let order = getCurrentWorksheetTasks().length;
+
+    titles.forEach(title => {
+      const name = String(title || "").trim();
+      if(!name) return;
+      if(skipDuplicates && existing.has(norm(name))) return;
+      existing.add(norm(name));
+
+      state.data.tasks.push({
+        id: uid("task"),
+        worksheetId,
+        title: name,
+        equipmentCode: "",
+        serviceType: inferServiceType(name),
+        owner: "Unassigned",
+        qty: 1,
+        status: "Not Started",
+        progress: 0,
+        shortDesc: "",
+        description: "",
+        images: [placeholderSvg(inferServiceType(name))],
+        files: [],
+        heroIndex: 0,
+        order: order++,
+        updatedAt: Date.now()
+      });
+    });
+
+    normalizeOrder(state.data);
+    save();
+  }
+
+  function openPresetModal(){
+    el("presetModal").classList.add("show");
+  }
+  function closePresetModal(){
+    el("presetModal").classList.remove("show");
+  }
+
+  function fileToDataURLFallback(file){
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+  }
+
+  function loadImageFromFile(file){
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        resolve(img);
+      };
+      img.onerror = reject;
+      img.src = url;
+    });
+  }
+
+  async function compressImageFileToJpegDataUrl(file, {maxEdge, quality, mime}){
+    const img = await loadImageFromFile(file);
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+    const scale = Math.min(1, maxEdge / Math.max(w,h));
+    const outW = Math.max(1, Math.round(w * scale));
+    const outH = Math.max(1, Math.round(h * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = outW;
+    canvas.height = outH;
+
+    const ctx = canvas.getContext("2d", { alpha:false });
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0,0,outW,outH);
+    ctx.drawImage(img, 0, 0, outW, outH);
+
+    return canvas.toDataURL(mime, quality);
+  }
+
+  async function addImagesToTask(task, files){
+    const imgs = Array.from(files || []).filter(f => f.type && f.type.startsWith("image/"));
+    if(!imgs.length) return;
+
+    const urls = [];
+    for(const f of imgs){
+      try{
+        urls.push(await compressImageFileToJpegDataUrl(f, IMG));
+      }catch(_){
+        urls.push(await fileToDataURLFallback(f));
+      }
+    }
+
+    task.images = urls.concat(task.images || []);
+    task.heroIndex = 0;
+    task.updatedAt = Date.now();
+    save();
+    renderAll();
+  }
+
+  function attachDropZoneHandlers(zoneEl, task){
+    if(!zoneEl) return;
+    const stop = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    zoneEl.addEventListener("dragenter", (e) => { stop(e); zoneEl.classList.add("dragover"); });
+    zoneEl.addEventListener("dragover", (e) => { stop(e); zoneEl.classList.add("dragover"); });
+    zoneEl.addEventListener("dragleave", (e) => { stop(e); zoneEl.classList.remove("dragover"); });
+    zoneEl.addEventListener("drop", async (e) => {
+      stop(e);
+      zoneEl.classList.remove("dragover");
+      if(e.dataTransfer?.files?.length) await addImagesToTask(task, e.dataTransfer.files);
+    });
+  }
+
+  el("btnNewWorksheet").onclick = () => {
+    if(state.selectedClientId === ALL_CLIENT_ID){
+      alert("Select a client first.");
+      return;
+    }
+
+    const worksheetNo = prompt("Worksheet number?", "");
+    if(worksheetNo === null) return;
+    const title = prompt("Worksheet title?", `Worksheet ${worksheetNo || ""}`.trim()) || "Worksheet";
+
+    const w = {
+      id: uid("ws"),
+      clientId: state.selectedClientId,
+      title: title.trim() || "Worksheet",
+      worksheetNo: worksheetNo.trim(),
+      worksheetDate: new Date().toISOString().slice(0,10),
+      referenceNo: "",
+      contactPerson: "",
+      notes: "",
+      progress: 0
+    };
+
+    state.data.worksheets.unshift(w);
+    state.selectedWorksheetId = w.id;
+    state.selectedTaskId = null;
+    save();
+    renderAll();
+  };
+
+  el("btnDeleteWorksheet").onclick = () => {
+    const w = state.data.worksheets.find(x => x.id === state.selectedWorksheetId);
+    if(!w) return alert("No worksheet selected.");
+    const count = state.data.tasks.filter(t => t.worksheetId === w.id).length;
+    if(!confirm(`Delete worksheet "${w.title}" and its ${count} task(s)?`)) return;
+
+    state.data.tasks = state.data.tasks.filter(t => t.worksheetId !== w.id);
+    state.data.worksheets = state.data.worksheets.filter(x => x.id !== w.id);
+    state.selectedWorksheetId = currentClientWorksheets()[0]?.id || null;
+    state.selectedTaskId = getCurrentWorksheetTasks()[0]?.id || null;
+    save();
+    renderAll();
+  };
+
+  el("btnNewTask").onclick = () => {
+    if(!state.selectedWorksheetId) return alert("Select a worksheet first.");
+    const title = prompt("Equipment / task name?");
+    if(!title) return;
+
+    const t = {
+      id: uid("task"),
+      worksheetId: state.selectedWorksheetId,
+      title: title.trim(),
+      equipmentCode: "",
+      serviceType: "Inspection",
+      owner: "Unassigned",
+      qty: 1,
+      status: "Not Started",
+      progress: 0,
+      shortDesc: "",
+      description: "",
+      images: [placeholderSvg("Inspection")],
+      files: [],
+      heroIndex: 0,
+      order: getCurrentWorksheetTasks().length,
+      updatedAt: Date.now()
+    };
+
+    state.data.tasks.push(t);
+    normalizeOrder(state.data);
+    state.selectedTaskId = t.id;
+    save();
+    renderAll();
+    showPanel("right");
+  };
+
+  el("btnDuplicate").onclick = () => {
+    const t = getSelectedTask();
+    if(!t) return;
+    const copy = JSON.parse(JSON.stringify(t));
+    copy.id = uid("task");
+    copy.title = t.title + " (copy)";
+    copy.order = getCurrentWorksheetTasks().length;
+    copy.updatedAt = Date.now();
+    state.data.tasks.push(copy);
+    normalizeOrder(state.data);
+    state.selectedTaskId = copy.id;
+    save();
+    renderAll();
+  };
+
+  el("btnDeleteTask").onclick = () => {
+    const t = getSelectedTask();
+    if(!t) return;
+    if(!confirm("Delete this task?")) return;
+    state.data.tasks = state.data.tasks.filter(x => x.id !== t.id);
+    state.selectedTaskId = getCurrentWorksheetTasks()[0]?.id || null;
+    save();
+    renderAll();
+  };
+
+  el("btnExport").onclick = () => {
+    const blob = new Blob([JSON.stringify(state.data, null, 2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "mediola-worksheet-tracker.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  el("btnImport").onclick = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if(!file) return;
+      try{
+        const text = await file.text();
+        state.data = migrate(JSON.parse(text));
+        ensureSelections();
+        save();
+        buildClientSelect();
+        renderAll();
+      }catch(e){
+        alert("Import failed.");
+      }
+    };
+    input.click();
+  };
+
+  el("btnReset").onclick = () => {
+    if(!confirm("Reset all local tracker data?")) return;
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(PRESET_KEY);
+    state.data = migrate(defaultData());
+    loadPresets();
+    state.selectedClientId = DEFAULT_CLIENT_ID;
+    ensureSelections();
+    save();
+    buildClientSelect();
+    buildScopeSelect();
+    buildStatusFilters();
+    renderAll();
+  };
+
+  el("q").addEventListener("input", (e) => {
+    state.query = e.target.value || "";
+    renderCards();
+  });
+
+  el("sortBy").addEventListener("change", (e) => {
+    state.sortBy = e.target.value;
+    renderCards();
+  });
+
+  el("btnOpenPresets").onclick = () => {
+    if(!state.selectedWorksheetId){
+      alert("Select a worksheet first.");
+      return;
+    }
+    const base = state.presets["Default service workflow"] || DEFAULT_TASK_LIST;
+    renderPresetGrid(new Set(base));
+    el("presetName").value = "Default service workflow";
+    openPresetModal();
+  };
+
+  el("btnClosePreset").onclick = closePresetModal;
+  el("presetModal").addEventListener("click", (e) => {
+    if(e.target === el("presetModal")) closePresetModal();
+  });
+
+  el("btnPresetAll").onclick = () => {
+    el("presetGrid").querySelectorAll("input[type=checkbox]").forEach(x => x.checked = true);
+  };
+  el("btnPresetNone").onclick = () => {
+    el("presetGrid").querySelectorAll("input[type=checkbox]").forEach(x => x.checked = false);
+  };
+
+  el("btnAddTaskToList").onclick = () => {
+    const name = prompt("Add service step:");
+    if(!name) return;
+    const key = "Default service workflow";
+    state.presets[key] = state.presets[key] || DEFAULT_TASK_LIST.slice();
+    if(!state.presets[key].some(x => norm(x) === norm(name))){
+      state.presets[key].push(name.trim());
+      localStorage.setItem(PRESET_KEY, JSON.stringify(state.presets));
+    }
+    renderPresetGrid();
+  };
+
+  el("btnRemoveCheckedFromList").onclick = () => {
+    const checked = new Set(getCheckedPresetItems().map(norm));
+    if(!checked.size) return;
+    Object.keys(state.presets).forEach(k => {
+      state.presets[k] = (state.presets[k] || []).filter(x => !checked.has(norm(x)));
+    });
+    localStorage.setItem(PRESET_KEY, JSON.stringify(state.presets));
+    renderPresetGrid();
+  };
+
+  el("btnCreateFromChecks").onclick = async () => {
+    const titles = getCheckedPresetItems();
+    if(!titles.length) return alert("Select at least one service step.");
+    await createTasksFromTitles(state.selectedWorksheetId, titles, el("chkSkipDupTasks").checked);
+    state.selectedTaskId = getCurrentWorksheetTasks()[0]?.id || null;
+    renderAll();
+    closePresetModal();
+  };
+
+  el("btnSavePreset").onclick = () => {
+    const name = el("presetName").value.trim();
+    if(!name) return alert("Enter a preset name.");
+    const titles = getCheckedPresetItems();
+    if(!titles.length) return alert("Select at least one step.");
+    state.presets[name] = titles.slice();
+    localStorage.setItem(PRESET_KEY, JSON.stringify(state.presets));
+    alert("Preset saved.");
+  };
+
+  el("btnLoadPreset").onclick = () => {
+    const names = Object.keys(state.presets);
+    if(!names.length) return alert("No presets saved.");
+    const pick = prompt("Preset name to load:\\n\\n" + names.join("\\n"), names[0]);
+    if(pick === null) return;
+    const key = names.find(n => norm(n) === norm(pick));
+    if(!key) return alert("Preset not found.");
+    el("presetName").value = key;
+    renderPresetGrid(new Set(state.presets[key]));
+  };
+
+  el("btnDeletePreset").onclick = () => {
+    const names = Object.keys(state.presets);
+    if(!names.length) return alert("No presets saved.");
+    const pick = prompt("Preset name to delete:\\n\\n" + names.join("\\n"), names[0]);
+    if(pick === null) return;
+    const key = names.find(n => norm(n) === norm(pick));
+    if(!key) return alert("Preset not found.");
+    delete state.presets[key];
+    localStorage.setItem(PRESET_KEY, JSON.stringify(state.presets));
+    renderPresetGrid();
+  };
+
+  el("btnShowLeft").onclick = () => showPanel("left");
+  el("btnShowMid").onclick = () => showPanel("mid");
+  el("btnShowRight").onclick = () => showPanel("right");
+
+  state.data = load();
+  loadPresets();
+  ensureSelections();
+  state.selectedClientId = state.data.clients.find(c => c.id === state.selectedClientId) ? state.selectedClientId : ALL_CLIENT_ID;
+  buildClientSelect();
+  buildScopeSelect();
+  buildStatusFilters();
+  renderAll();
+  showPanel("mid");
+  save();
+})();
+</script>
+</body>
+</html>
