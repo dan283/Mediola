@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mediola STATIM Service Manager</title>
+<style>
+  :root{
+    --bg:#eef3f6;
+    --panel:#ffffff;
+    --panel2:#f7fafb;
+    --ink:#17242b;
+    --muted:#667780;
+    --line:#d8e1e6;
+    --brand:#0f6f78;
+    --brand2:#0b535a;
+    --ok:#18794e;
+    --warn:#a16207;
+    --danger:#b42318;
+    --info:#2457a6;
+    --shadow:0 10px 28px rgba(23,36,43,.09);
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+  button,input,select,textarea{font:inherit}
+  button{cursor:pointer}
+  .topbar{
+    position:sticky;top:0;z-index:20;background:#0d5961;color:white;
+    display:flex;align-items:center;gap:14px;padding:12px 18px;box-shadow:0 5px 18px rgba(0,0,0,.18);
+    flex-wrap:wrap
+  }
+  .brand{display:flex;align-items:center;gap:10px;min-width:270px}
+  .logo{
+    width:38px;height:38px;border-radius:12px;background:white;color:var(--brand);
+    display:grid;place-items:center;font-weight:900;font-size:18px
+  }
+  .brand h1{font-size:16px;margin:0}.brand small{display:block;opacity:.76;margin-top:2px}
+  .top-actions{
+    margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;
+    min-width:0;flex:1 1 620px
+  }
+  .top-actions .btn,.top-actions select{white-space:nowrap;flex:0 0 auto}
+  .btn{
+    border:0;border-radius:10px;padding:9px 12px;font-weight:700;background:#e8f3f4;color:#0b535a
+  }
+  .btn:hover{filter:brightness(.98)}
+  .btn.primary{background:#fff;color:#0b535a}
+  .btn.brand{
+    background:var(--brand);color:#fff;min-width:0;display:inline-flex;
+    align-items:center;justify-content:center;gap:0
+  }
+  .btn.ghost{background:transparent;border:1px solid #c9d9dd;color:var(--ink)}
+  .btn.danger{background:#fff0ee;color:var(--danger)}
+  .btn.small{padding:6px 9px;font-size:12px;border-radius:8px}
+  .layout{display:grid;grid-template-columns:290px minmax(0,1fr);min-height:calc(100vh - 62px)}
+  aside{background:#f9fbfc;border-right:1px solid var(--line);padding:18px;position:sticky;top:62px;height:calc(100vh - 62px);overflow:auto}
+  main{padding:20px;min-width:0}
+  .section-title{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:800;margin:16px 0 8px}
+  .filter{display:grid;gap:7px;margin-bottom:10px}
+  .filter label{font-size:12px;color:var(--muted);font-weight:700}
+  input,select,textarea{
+    width:100%;border:1px solid #cdd9de;background:white;border-radius:10px;padding:9px 10px;color:var(--ink);outline:none
+  }
+  input:focus,select:focus,textarea:focus{border-color:#58a7ae;box-shadow:0 0 0 3px rgba(15,111,120,.1)}
+  textarea{min-height:84px;resize:vertical}
+  .seg{display:flex;gap:6px;flex-wrap:wrap}
+  .seg button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 9px;font-size:12px}
+  .seg button.active{background:#d9eff1;border-color:#87c4ca;color:#0b535a;font-weight:800}
+  .stats{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:12px;margin-bottom:18px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 5px 14px rgba(23,36,43,.04)}
+  .stat .n{font-size:28px;font-weight:900;line-height:1}.stat .l{font-size:12px;color:var(--muted);margin-top:7px;font-weight:700}
+  .toolbar{display:flex;gap:10px;align-items:center;margin:8px 0 14px}
+  .toolbar h2{font-size:18px;margin:0}.toolbar .count{font-size:12px;color:var(--muted)}
+  .toolbar .spacer{flex:1}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px}
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:15px;box-shadow:var(--shadow);transition:.15s;position:relative;overflow:hidden
+  }
+  .card.due-overdue{
+    background:linear-gradient(135deg,rgba(180,35,24,.115) 0%,rgba(255,255,255,.97) 58%);
+    border-color:rgba(180,35,24,.30)
+  }
+  .card.due-due{
+    background:linear-gradient(135deg,rgba(217,138,0,.13) 0%,rgba(255,255,255,.98) 60%);
+    border-color:rgba(185,115,0,.30)
+  }
+  .card.due-soon{
+    background:linear-gradient(135deg,rgba(217,184,0,.075) 0%,rgba(255,255,255,.99) 62%);
+    border-color:rgba(179,153,0,.22)
+  }
+  .card:hover{transform:translateY(-2px);box-shadow:0 13px 32px rgba(23,36,43,.12)}
+  .stripe{position:absolute;left:0;top:0;bottom:0;width:5px;background:#8fa1a8}
+  .stripe.overdue{background:var(--danger)} .stripe.due{background:#d98a00}
+  .stripe.soon{background:#d9b800}.stripe.ok{background:var(--ok)}
+  .card-top{display:flex;gap:10px;align-items:flex-start}
+  .card h3{margin:0;font-size:16px;line-height:1.25}.sub{font-size:12px;color:var(--muted);margin-top:4px}
+  .badge{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:4px 7px;font-size:11px;font-weight:800;background:#edf2f4;color:#52636b}
+  .badge.overdue{background:#ffe6e2;color:var(--danger)}
+  .badge.due{background:#fff0cf;color:#8d5200}
+  .badge.soon{background:#fff9d7;color:#7e6900}
+  .badge.ok{background:#e3f4ea;color:var(--ok)}
+  .badge.repair{background:#e6efff;color:var(--info)}
+  .card .meta{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:13px}
+  .meta-box{background:var(--panel2);border:1px solid #e6ecef;padding:9px;border-radius:10px}
+  .meta-box .k{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:800}
+  .meta-box .v{font-size:13px;font-weight:800;margin-top:3px}
+  .due-list{display:grid;gap:7px;margin-top:11px}
+  .due-line{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:12px}
+  .card-actions{
+    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;
+    margin-top:13px;border-top:1px solid #edf1f3;padding-top:11px
+  }
+  .card-actions .btn{
+    width:100%;min-width:0;white-space:normal;line-height:1.15;
+    min-height:40px;padding:8px 7px;text-align:center
+  }
+  .empty{padding:40px;border:1px dashed #b9c7cd;border-radius:16px;background:#f9fbfc;text-align:center;color:var(--muted)}
+  .side-note{font-size:11px;line-height:1.5;color:var(--muted);background:#edf5f6;border-radius:10px;padding:10px;margin-top:14px}
+  .modal{
+    position:fixed;inset:0;background:rgba(13,29,34,.55);display:none;align-items:flex-start;justify-content:center;
+    padding:35px 15px;z-index:50;overflow:auto
+  }
+  .modal.open{display:flex}
+  .dialog{width:min(980px,100%);background:#fff;border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.3);overflow:hidden}
+  .dialog.sm{width:min(680px,100%)}
+  .dialog-head{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line);position:sticky;top:-35px;background:#fff;z-index:2}
+  .dialog-head h2{font-size:18px;margin:0}.dialog-head .spacer{flex:1}
+  .x{border:0;background:#edf2f4;border-radius:9px;width:34px;height:34px;font-size:18px}
+  .dialog-body{padding:18px}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding:0 18px;background:#fafcfd}
+  .tab{border:0;background:transparent;padding:11px 9px;border-bottom:3px solid transparent;font-weight:800;color:var(--muted)}
+  .tab.active{color:var(--brand);border-bottom-color:var(--brand)}
+  .tabpage{display:none}.tabpage.active{display:block}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .field{display:grid;gap:5px}.field label{font-size:12px;color:var(--muted);font-weight:800}
+  .span2{grid-column:span 2}.span3{grid-column:span 3}
+  .checkrow{display:flex;gap:10px;align-items:center;padding:10px;background:#f7fafb;border:1px solid var(--line);border-radius:12px}
+  .checkrow input[type=checkbox]{width:auto}
+  .history{display:grid;gap:10px}
+  .history-item{border:1px solid var(--line);background:#fbfcfd;border-radius:12px;padding:11px}
+  .history-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.history-top strong{margin-right:auto}
+  .history-body{font-size:12px;color:#44545c;margin-top:7px;white-space:pre-wrap}
+  .history-actions{display:flex;gap:6px;margin-top:8px}
+  .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+  .photo{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+  .photo img{width:100%;height:110px;object-fit:cover;display:block}
+  .photo .cap{padding:7px;font-size:11px}.photo .photo-actions{display:flex;gap:4px;padding:0 7px 7px}
+  .drop{
+    border:2px dashed #a9c3c8;border-radius:14px;padding:24px;text-align:center;background:#f5fafb;color:var(--muted)
+  }
+  .drop.drag{background:#e6f5f6;border-color:#559fa7}
+  .footer-actions{display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--line);padding:14px 18px;background:#fafcfd;position:sticky;bottom:-35px}
+  .notice{padding:10px 12px;border-radius:10px;background:#eef5ff;color:#285589;font-size:12px;margin-bottom:12px}
+  .toast{position:fixed;right:18px;bottom:18px;z-index:100;background:#17242b;color:#fff;padding:10px 13px;border-radius:10px;box-shadow:var(--shadow);display:none}
+  .toast.show{display:block}
+  .mini-table{width:100%;border-collapse:collapse;font-size:12px}
+  .mini-table th,.mini-table td{padding:8px;border-bottom:1px solid #e7ecef;text-align:left;vertical-align:top}
+  .mini-table th{color:var(--muted);font-size:11px;text-transform:uppercase}
+  .pillrow{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+  .archived{opacity:.58}
+  .location-list{display:grid;gap:12px}
+  .location-card{border:1px solid var(--line);border-radius:14px;background:#fbfcfd;padding:13px}
+  .location-head{display:flex;gap:10px;align-items:flex-start}
+  .location-head h3{margin:0;font-size:16px}
+  .location-actions{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+  .ward-list{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+  .ward-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #d8e1e6;background:#fff;border-radius:999px;padding:6px 8px;font-size:12px}
+  .ward-chip button{border:0;background:transparent;color:var(--danger);font-weight:900;padding:0 2px}
+  .master-count{font-size:11px;color:var(--muted);margin-top:5px}
+  @media(max-width:950px){
+    .layout{grid-template-columns:1fr}aside{position:relative;top:0;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+    .stats{grid-template-columns:repeat(2,1fr)}.brand{min-width:0}.brand small{display:none}
+  }
+  @media(max-width:650px){
+    .topbar{align-items:flex-start}.top-actions{gap:5px}.top-actions .btn{padding:7px 8px;font-size:12px}
+    .stats{grid-template-columns:1fr 1fr}.grid2,.grid3{grid-template-columns:1fr}.span2,.span3{grid-column:auto}
+    main{padding:12px}.cards{grid-template-columns:1fr}
+    .card-actions{grid-template-columns:1fr}
+  }
+  @media print{
+    .topbar,aside,.card-actions,.toolbar .btn,.toolbar select{display:none!important}
+    .layout{display:block}.stats{grid-template-columns:repeat(5,1fr)}
+    main{padding:0}.card{break-inside:avoid;box-shadow:none}
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">M</div>
+    <div><h1>Mediola STATIM Service Manager</h1><small>6 / 12 month inspection & repair tracking</small></div>
+  </div>
+  <div class="top-actions">
+    <select id="langSelect" class="btn" style="width:auto;padding-right:28px">
+      <option value="en">English</option>
+      <option value="hu">Magyar</option>
+    </select>
+    <button class="btn primary" id="addUnitBtn">+ Add unit</button>
+    <button class="btn" id="manageLocationsBtn">Hospitals & wards</button>
+    <button class="btn" id="openJsonBtn">Open JSON</button>
+    <button class="btn" id="saveJsonBtn">Save JSON</button>
+    <button class="btn" id="csvBtn">Export CSV</button>
+  </div>
+</header>
+
+<div class="layout">
+<aside>
+  <div class="section-title">Filter</div>
+  <div class="filter"><label>Search</label><input id="search" placeholder="Serial, model, hospital, notes..." /></div>
+  <div class="filter"><label>Hospital</label><select id="hospitalFilter"><option value="">All hospitals</option></select></div>
+  <div class="filter"><label>Department</label><select id="departmentFilter"><option value="">All departments</option></select></div>
+  <div class="filter"><label>Checkup type</label>
+    <select id="intervalFilter"><option value="">6 & 12 month</option><option value="6">6 month</option><option value="12">12 month</option></select>
+  </div>
+  <div class="filter"><label>Due</label>
+    <select id="dueFilter">
+      <option value="all">All</option><option value="overdue">Overdue</option><option value="30">Due in next 30 days</option>
+      <option value="60">Due in next 60 days</option><option value="90">Due in next 90 days</option><option value="none">No due date</option>
+    </select>
+  </div>
+  <div class="filter"><label>Repair status</label>
+    <select id="repairFilter"><option value="">All</option><option value="open">Has open repair</option><option value="none">No open repair</option></select>
+  </div>
+  <div class="filter"><label>Record status</label>
+    <select id="archiveFilter"><option value="active">Active only</option><option value="all">Active + archived</option><option value="archived">Archived only</option></select>
+  </div>
+
+  <div class="section-title">Quick views</div>
+  <div class="seg">
+    <button data-quick="overdue">Overdue</button>
+    <button data-quick="30">Next month</button>
+    <button data-quick="repair">Open repairs</button>
+    <button data-quick="all">Everything</button>
+  </div>
+
+  <div class="section-title">Locations</div>
+  <button class="btn ghost" id="manageLocationsSideBtn" style="width:100%">Manage hospitals & wards</button>
+
+  <div class="section-title">Database</div>
+  <div class="filter"><label>Database name</label><input id="dbName" value="Mediola STATIM database" /></div>
+  <div class="side-note">
+    Records autosave locally in this browser. Use <b>Save JSON</b> to create a portable backup/database file and <b>Open JSON</b> on another machine.
+    Photos are compressed and embedded inside the JSON.
+  </div>
+</aside>
+
+<main>
+  <section class="stats">
+    <div class="stat"><div class="n" id="statUnits">0</div><div class="l">Active units</div></div>
+    <div class="stat"><div class="n" id="statOverdue">0</div><div class="l">Overdue checkups</div></div>
+    <div class="stat"><div class="n" id="stat30">0</div><div class="l">Due ≤ 30 days</div></div>
+    <div class="stat"><div class="n" id="statRepairs">0</div><div class="l">Open repairs</div></div>
+    <div class="stat"><div class="n" id="statPhotos">0</div><div class="l">Stored photos</div></div>
+  </section>
+
+  <div class="toolbar">
+    <h2>STATIM units</h2><span class="count" id="resultCount"></span>
+    <div class="spacer"></div>
+    <select id="sortBy" style="width:auto">
+      <option value="due">Sort: next due</option>
+      <option value="hospital">Sort: hospital</option>
+      <option value="model">Sort: model</option>
+      <option value="serial">Sort: serial</option>
+      <option value="updated">Sort: recently updated</option>
+    </select>
+    <button class="btn ghost" onclick="window.print()">Print view</button>
+  </div>
+  <div class="cards" id="cards"></div>
+</main>
+</div>
+
+<input type="file" id="jsonFile" accept=".json,application/json" hidden />
+
+<div class="modal" id="unitModal">
+  <div class="dialog">
+    <div class="dialog-head">
+      <div><h2 id="modalTitle">Unit</h2><div class="sub" id="modalSub"></div></div>
+      <div class="spacer"></div><button class="x" data-close="unitModal">×</button>
+    </div>
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-tab="details">Details</button>
+      <button class="tab" data-tab="checkups">Checkups</button>
+      <button class="tab" data-tab="repairs">Repairs</button>
+      <button class="tab" data-tab="photos">Photos</button>
+      <button class="tab" data-tab="history">Timeline</button>
+    </div>
+
+    <div class="dialog-body">
+      <div class="tabpage active" data-page="details">
+        <div class="notice" style="display:flex;align-items:center;gap:10px">
+          <span style="flex:1">Hospital and ward choices come from the master directory.</span>
+          <button class="btn small brand" type="button" onclick="openLocations()">Manage hospitals & wards</button>
+        </div>
+        <div class="grid3">
+          <div class="field"><label>Hospital *</label><select id="fHospital"><option value="">Choose hospital...</option></select></div>
+          <div class="field"><label>Ward / department *</label><select id="fDepartment"><option value="">Choose ward...</option></select></div>
+          <div class="field"><label>Room / location</label><input id="fLocation" /></div>
+          <div class="field"><label>Manufacturer</label><input id="fManufacturer" value="SciCan" /></div>
+          <div class="field"><label>Model</label>
+            <select id="fModel"><option></option><option>STATIM 2000S</option><option>STATIM 5000S</option><option>STATIM 2000 G4</option><option>STATIM 5000 G4</option><option>STATIM 2000</option><option>STATIM 5000</option><option>Other</option></select>
+          </div>
+          <div class="field"><label>Serial number *</label><input id="fSerial" /></div>
+          <div class="field"><label>Asset / inventory no.</label><input id="fAsset" /></div>
+          <div class="field"><label>Installation / acquired date</label><input id="fInstalled" type="date" /></div>
+          <div class="field"><label>Responsible contact</label><input id="fContact" /></div>
+          <div class="field"><label>Phone / email</label><input id="fContactInfo" /></div>
+          <div class="field"><label>Mediola technician</label><input id="fTechnician" /></div>
+          <div class="field"><label>Internal tag</label><input id="fTag" placeholder="e.g. STATIM-PTE-03" /></div>
+          <div class="field span3"><label>Unit notes</label><textarea id="fNotes"></textarea></div>
+        </div>
+        <div class="section-title">Inspection schedules</div>
+        <div class="grid2">
+          <div class="checkrow">
+            <input id="fSixEnabled" type="checkbox" checked />
+            <div style="flex:1"><b>6 month checkup</b><div class="sub">Track a recurring 6-month inspection.</div></div>
+          </div>
+          <div class="checkrow">
+            <input id="fTwelveEnabled" type="checkbox" checked />
+            <div style="flex:1"><b>12 month checkup</b><div class="sub">Track a recurring annual inspection.</div></div>
+          </div>
+          <div class="field"><label>Last 6 month checkup</label><input id="fSixLast" type="date" /></div>
+          <div class="field"><label>Next 6 month due</label><input id="fSixNext" type="date" /></div>
+          <div class="field"><label>Last 12 month checkup</label><input id="fTwelveLast" type="date" /></div>
+          <div class="field"><label>Next 12 month due</label><input id="fTwelveNext" type="date" /></div>
+        </div>
+        <div class="pillrow">
+          <button class="btn small ghost" id="calc6">Calculate next 6m from last</button>
+          <button class="btn small ghost" id="calc12">Calculate next 12m from last</button>
+        </div>
+        <div class="section-title">Record</div>
+        <label class="checkrow"><input id="fArchived" type="checkbox" /><span><b>Archive this unit</b><span class="sub"> Keeps history but hides it from the default active list.</span></span></label>
+      </div>
+
+      <div class="tabpage" data-page="checkups">
+        <div class="notice">Completing a checkup automatically updates the matching last-check date and calculates its next due date. You can override the next due date.</div>
+        <button class="btn brand" id="addCheckBtn">+ Record completed checkup</button>
+        <div class="section-title">Checkup history</div>
+        <div class="history" id="checkHistory"></div>
+      </div>
+
+      <div class="tabpage" data-page="repairs">
+        <button class="btn brand" id="addRepairBtn">+ Add repair / fault</button>
+        <div class="section-title">Repair history</div>
+        <div class="history" id="repairHistory"></div>
+      </div>
+
+      <div class="tabpage" data-page="photos">
+        <div class="drop" id="dropZone">
+          <b>Add photos</b><br><span class="sub">Click or drag images here. Images are resized to max 1600 px and compressed before being embedded in the JSON.</span>
+          <input type="file" id="photoInput" accept="image/*" multiple hidden />
+        </div>
+        <div class="section-title">Stored photos</div>
+        <div class="gallery" id="gallery"></div>
+      </div>
+
+      <div class="tabpage" data-page="history">
+        <table class="mini-table"><thead><tr><th>Date</th><th>Type</th><th>Details</th><th>Technician / status</th></tr></thead><tbody id="timeline"></tbody></table>
+      </div>
+    </div>
+    <div class="footer-actions">
+      <button class="btn danger" id="deleteUnitBtn">Delete unit</button>
+      <div style="flex:1"></div>
+      <button class="btn ghost" data-close="unitModal">Cancel</button>
+      <button class="btn brand" id="saveUnitBtn">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="checkModal">
+  <div class="dialog sm">
+    <div class="dialog-head"><h2>Record completed checkup</h2><div class="spacer"></div><button class="x" data-close="checkModal">×</button></div>
+    <div class="dialog-body grid2">
+      <div class="field"><label>Checkup type</label><select id="cType"><option value="6">6 month</option><option value="12">12 month</option></select></div>
+      <div class="field"><label>Checkup date</label><input id="cDate" type="date" /></div>
+      <div class="field"><label>Result</label><select id="cResult"><option value="Passed">Passed</option><option value="Passed with notes">Passed with notes</option><option value="Repair required">Repair required</option><option value="Failed">Failed</option></select></div>
+      <div class="field"><label>Mediola technician</label><input id="cTech" /></div>
+      <div class="field"><label>Job sheet / report no.</label><input id="cJob" /></div>
+      <div class="field"><label>Next due (optional override)</label><input id="cNext" type="date" /></div>
+      <div class="field span2"><label>Work performed / findings</label><textarea id="cNotes" placeholder="Inspection, calibration, parts changed, test results..."></textarea></div>
+    </div>
+    <div class="footer-actions"><button class="btn ghost" data-close="checkModal">Cancel</button><button class="btn brand" id="saveCheckBtn">Save checkup</button></div>
+  </div>
+</div>
+
+<div class="modal" id="repairModal">
+  <div class="dialog sm">
+    <div class="dialog-head"><h2 id="repairTitle">Add repair / fault</h2><div class="spacer"></div><button class="x" data-close="repairModal">×</button></div>
+    <div class="dialog-body grid2">
+      <div class="field"><label>Reported / start date</label><input id="rDate" type="date" /></div>
+      <div class="field"><label>Status</label><select id="rStatus"><option value="Open">Open</option><option value="Waiting for parts">Waiting for parts</option><option value="Sent out">Sent out</option><option value="Completed">Completed</option><option value="Cancelled">Cancelled</option></select></div>
+      <div class="field"><label>Technician</label><input id="rTech" /></div>
+      <div class="field"><label>Completed date</label><input id="rDone" type="date" /></div>
+      <div class="field"><label>Job sheet / repair no.</label><input id="rJob" /></div>
+      <div class="field"><label>Cost (optional)</label><input id="rCost" type="number" step="1" min="0" placeholder="HUF" /></div>
+      <div class="field span2"><label>Fault / repair notes</label><textarea id="rNotes"></textarea></div>
+      <div class="field span2"><label>Parts used</label><textarea id="rParts" placeholder="Seal, filter, valve, pump, etc."></textarea></div>
+    </div>
+    <div class="footer-actions"><button class="btn ghost" data-close="repairModal">Cancel</button><button class="btn brand" id="saveRepairBtn">Save repair</button></div>
+  </div>
+</div>
+
+<div class="modal" id="locationsModal">
+  <div class="dialog">
+    <div class="dialog-head">
+      <div><h2>Hospitals & wards</h2><div class="sub">Maintain the master list used by unit sheets and dashboard filters.</div></div>
+      <div class="spacer"></div><button class="x" data-close="locationsModal">×</button>
+    </div>
+    <div class="dialog-body">
+      <div class="grid3">
+        <div class="field"><label>Hospital name *</label><input id="locHospitalName" placeholder="e.g. Pécsi Tudományegyetem Klinikai Központ" /></div>
+        <div class="field"><label>City / address</label><input id="locHospitalAddress" placeholder="Optional" /></div>
+        <div class="field"><label>Hospital code / short name</label><input id="locHospitalCode" placeholder="Optional, e.g. PTE KK" /></div>
+        <div class="field span3"><label>Notes</label><input id="locHospitalNotes" placeholder="Optional contact or service notes" /></div>
+      </div>
+      <div class="pillrow">
+        <button class="btn brand" id="addHospitalBtn">+ Add hospital</button>
+      </div>
+      <div class="section-title">Hospital directory</div>
+      <div class="location-list" id="locationList"></div>
+    </div>
+    <div class="footer-actions">
+      <span class="sub" style="margin-right:auto">Hospitals and wards are stored in the same JSON database as the units.</span>
+      <button class="btn brand" data-close="locationsModal">Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="editHospitalModal">
+  <div class="dialog sm">
+    <div class="dialog-head"><h2>Edit hospital</h2><div class="spacer"></div><button class="x" data-close="editHospitalModal">×</button></div>
+    <div class="dialog-body grid2">
+      <div class="field span2"><label>Hospital name *</label><input id="ehName" /></div>
+      <div class="field"><label>City / address</label><input id="ehAddress" /></div>
+      <div class="field"><label>Code / short name</label><input id="ehCode" /></div>
+      <div class="field span2"><label>Notes</label><textarea id="ehNotes"></textarea></div>
+    </div>
+    <div class="footer-actions"><button class="btn ghost" data-close="editHospitalModal">Cancel</button><button class="btn brand" id="saveHospitalEditBtn">Save hospital</button></div>
+  </div>
+</div>
+
+<div class="modal" id="wardModal">
+  <div class="dialog sm">
+    <div class="dialog-head"><div><h2 id="wardModalTitle">Add ward</h2><div class="sub" id="wardModalSub"></div></div><div class="spacer"></div><button class="x" data-close="wardModal">×</button></div>
+    <div class="dialog-body grid2">
+      <div class="field span2"><label>Ward / department name *</label><input id="wardName" placeholder="e.g. Fogászati és Szájsebészeti Klinika" /></div>
+      <div class="field"><label>Building / floor</label><input id="wardLocation" placeholder="Optional" /></div>
+      <div class="field"><label>Contact</label><input id="wardContact" placeholder="Optional" /></div>
+      <div class="field span2"><label>Notes</label><textarea id="wardNotes"></textarea></div>
+    </div>
+    <div class="footer-actions"><button class="btn ghost" data-close="wardModal">Cancel</button><button class="btn brand" id="saveWardBtn">Save ward</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const APP_VERSION = 3;
+const blankDB = () => ({
+  app:"Mediola STATIM Service Manager",
+  version:APP_VERSION,
+  databaseName:"Mediola STATIM database",
+  exportedAt:null,
+  locations:[],
+  units:[]
+});
+let db = blankDB();
+let editingId = null;
+let editingRepairId = null;
+let editingHospitalId = null;
+let editingWardHospitalId = null;
+let editingWardId = null;
+let fileHandle = null;
+
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const uid = p => p + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+
+const I18N = {
+  en: {
+    appTitle:"Mediola STATIM Service Manager",
+    appSub:"6 / 12 month inspection & repair tracking",
+    addUnit:"+ Add unit", hospitals:"Hospitals & wards", openJson:"Open JSON", saveJson:"Save JSON", exportCsv:"Export CSV",
+    filter:"Filter", search:"Search", searchPh:"Serial, model, hospital, notes...", hospital:"Hospital", allHospitals:"All hospitals",
+    department:"Department", allDepartments:"All departments", checkupType:"Checkup type", bothCheckups:"6 & 12 month",
+    due:"Due", all:"All", overdue:"Overdue", next30:"Due in next 30 days", next60:"Due in next 60 days", next90:"Due in next 90 days", noDue:"No due date",
+    repairStatus:"Repair status", allRepairs:"All", hasOpenRepair:"Has open repair", noOpenRepair:"No open repair",
+    recordStatus:"Record status", activeOnly:"Active only", activeArchived:"Active + archived", archivedOnly:"Archived only",
+    quickViews:"Quick views", nextMonth:"Next month", openRepairs:"Open repairs", everything:"Everything",
+    locations:"Locations", manageHospitals:"Manage hospitals & wards", database:"Database", databaseName:"Database name",
+    dbNote:"Records autosave locally in this browser. Use Save JSON to create a portable backup/database file and Open JSON on another machine. Photos are compressed and embedded inside the JSON.",
+    activeUnits:"Active units", overdueCheckups:"Overdue checkups", due30:"Due ≤ 30 days", storedPhotos:"Stored photos",
+    units:"STATIM units", sortDue:"Sort: next due", sortHospital:"Sort: hospital", sortModel:"Sort: model", sortSerial:"Sort: serial", sortUpdated:"Sort: recently updated", printView:"Print view",
+    details:"Details", checkups:"Checkups", repairs:"Repairs", photos:"Photos", timeline:"Timeline",
+    masterNote:"Hospital and ward choices come from the master directory.", manufacturer:"Manufacturer", model:"Model", serial:"Serial number *",
+    asset:"Asset / inventory no.", assetShort:"Asset no.", lastService:"Last service", installed:"Installation / acquired date", responsible:"Responsible contact", phoneEmail:"Phone / email",
+    technician:"Mediola technician", internalTag:"Internal tag", unitNotes:"Unit notes", schedules:"Inspection schedules",
+    sixCheck:"6 month checkup", sixHelp:"Track a recurring 6-month inspection.", twelveCheck:"12 month checkup", twelveHelp:"Track a recurring annual inspection.",
+    last6:"Last 6 month checkup", next6:"Next 6 month due", last12:"Last 12 month checkup", next12:"Next 12 month due",
+    calc6:"Calculate next 6m from last", calc12:"Calculate next 12m from last", record:"Record", archiveUnit:"Archive this unit",
+    archiveHelp:"Keeps history but hides it from the default active list.", deleteUnit:"Delete unit", cancel:"Cancel", saveChanges:"Save changes",
+    completedCheckHelp:"Completing a checkup automatically updates the matching last-check date and calculates its next due date. You can override the next due date.",
+    recordCompleted:"+ Record completed checkup", checkHistory:"Checkup history", addRepair:"+ Add repair / fault", repairHistory:"Repair history",
+    addPhotos:"Add photos", photoHelp:"Click or drag images here. Images are resized to max 1600 px and compressed before being embedded in the JSON.",
+    storedPhotosTitle:"Stored photos", date:"Date", type:"Type", detailsCol:"Details", techStatus:"Technician / status",
+    recordCompletedTitle:"Record completed checkup", result:"Result", checkDate:"Checkup date", jobNo:"Job sheet / report no.", nextDueOverride:"Next due (optional override)",
+    workPerformed:"Work performed / findings", saveCheckup:"Save checkup", repairTitle:"Add repair / fault", reportedDate:"Reported / start date",
+    status:"Status", completedDate:"Completed date", repairNo:"Job sheet / repair no.", cost:"Cost (optional)", faultNotes:"Fault / repair notes",
+    partsUsed:"Parts used", saveRepair:"Save repair", hospitalsTitle:"Hospitals & wards", hospitalsSub:"Maintain the master list used by unit sheets and dashboard filters.",
+    hospitalName:"Hospital name *", cityAddress:"City / address", hospitalCode:"Hospital code / short name", notes:"Notes", addHospital:"+ Add hospital",
+    hospitalDirectory:"Hospital directory", done:"Done", sameJson:"Hospitals and wards are stored in the same JSON database as the units.",
+    editHospital:"Edit hospital", codeShort:"Code / short name", saveHospital:"Save hospital", addWard:"Add ward", wardName:"Ward / department name *",
+    buildingFloor:"Building / floor", contact:"Contact", saveWard:"Save ward", chooseHospital:"Choose hospital...", chooseWard:"Choose ward...",
+    roomLocation:"Room / location", noUnits:"No units match the current filters.", addFirst:"+ Add first unit",
+    noHospitals:"No hospitals added yet.", noHospitalsHelp:"Add a hospital above, then add its wards/departments.",
+    noCheckups:"No checkups recorded yet.", noRepairs:"No repairs recorded for this unit.", noPhotos:"No photos stored for this unit.",
+    passed:"Passed", passedNotes:"Passed with notes", repairRequired:"Repair required", failed:"Failed",
+    open:"Open", waitingParts:"Waiting for parts", sentOut:"Sent out", completed:"Completed", cancelled:"Cancelled",
+    archived:"Archived", noInspection:"No inspection schedule enabled.", noHospital:"No hospital", noDepartment:"No department",
+    noTechnician:"No technician", noDueDate:"No due date", dueToday:"Due today", dueIn:"Due in {n} day", daysOverdue:"{n} day overdue",
+    daysPlural:"{n} days overdue", dueInPlural:"Due in {n} days", openRepairSing:"open repair", openRepairPlur:"open repairs",
+    shown:"shown", total:"total", wardDepartment:"Ward / department *", selectLang:"Language"
+  },
+  hu: {
+    appTitle:"Mediola STATIM Szervizkezelő",
+    appSub:"6 / 12 havi felülvizsgálatok és javítások nyilvántartása",
+    addUnit:"+ Berendezés", hospitals:"Kórházak és osztályok", openJson:"JSON megnyitása", saveJson:"JSON mentése", exportCsv:"CSV export",
+    filter:"Szűrés", search:"Keresés", searchPh:"Gyári szám, modell, kórház, megjegyzés...", hospital:"Kórház", allHospitals:"Összes kórház",
+    department:"Osztály", allDepartments:"Összes osztály", checkupType:"Felülvizsgálat típusa", bothCheckups:"6 és 12 havi",
+    due:"Esedékesség", all:"Összes", overdue:"Lejárt", next30:"Következő 30 napban esedékes", next60:"Következő 60 napban esedékes", next90:"Következő 90 napban esedékes", noDue:"Nincs esedékességi dátum",
+    repairStatus:"Javítás állapota", allRepairs:"Összes", hasOpenRepair:"Van nyitott javítás", noOpenRepair:"Nincs nyitott javítás",
+    recordStatus:"Rekord állapota", activeOnly:"Csak aktív", activeArchived:"Aktív + archivált", archivedOnly:"Csak archivált",
+    quickViews:"Gyorsnézetek", nextMonth:"Következő hónap", openRepairs:"Nyitott javítások", everything:"Minden",
+    locations:"Helyszínek", manageHospitals:"Kórházak és osztályok kezelése", database:"Adatbázis", databaseName:"Adatbázis neve",
+    dbNote:"A rekordok automatikusan mentődnek ebben a böngészőben. A JSON mentése gombbal hordozható mentést/adatbázist készíthetsz, amely másik gépen a JSON megnyitása gombbal betölthető. A fotók tömörítve, a JSON fájlba ágyazva tárolódnak.",
+    activeUnits:"Aktív berendezések", overdueCheckups:"Lejárt felülvizsgálatok", due30:"30 napon belül esedékes", storedPhotos:"Tárolt fotók",
+    units:"STATIM berendezések", sortDue:"Rendezés: következő esedékesség", sortHospital:"Rendezés: kórház", sortModel:"Rendezés: modell", sortSerial:"Rendezés: gyári szám", sortUpdated:"Rendezés: legutóbb frissítve", printView:"Nyomtatás",
+    details:"Adatok", checkups:"Felülvizsgálatok", repairs:"Javítások", photos:"Fotók", timeline:"Idővonal",
+    masterNote:"A kórház- és osztályválaszték a központi helyszínlistából származik.", manufacturer:"Gyártó", model:"Modell", serial:"Gyári szám *",
+    asset:"Leltári / eszközszám", assetShort:"Leltári szám", lastService:"Utolsó szerviz", installed:"Beszerzés / telepítés dátuma", responsible:"Kapcsolattartó", phoneEmail:"Telefon / e-mail",
+    technician:"Mediola technikus", internalTag:"Belső azonosító", unitNotes:"Berendezés megjegyzések", schedules:"Felülvizsgálati ütemezés",
+    sixCheck:"6 havi felülvizsgálat", sixHelp:"Ismétlődő 6 havi felülvizsgálat követése.", twelveCheck:"12 havi felülvizsgálat", twelveHelp:"Ismétlődő éves felülvizsgálat követése.",
+    last6:"Utolsó 6 havi felülvizsgálat", next6:"Következő 6 havi esedékesség", last12:"Utolsó 12 havi felülvizsgálat", next12:"Következő 12 havi esedékesség",
+    calc6:"Következő 6 havi számítása", calc12:"Következő 12 havi számítása", record:"Rekord", archiveUnit:"Berendezés archiválása",
+    archiveHelp:"Az előzményeket megtartja, de az alapértelmezett aktív listából elrejti.", deleteUnit:"Berendezés törlése", cancel:"Mégse", saveChanges:"Változtatások mentése",
+    completedCheckHelp:"A felülvizsgálat rögzítése automatikusan frissíti az utolsó ellenőrzés dátumát és kiszámítja a következő esedékességet. Ez felülírható.",
+    recordCompleted:"+ Elvégzett felülvizsgálat rögzítése", checkHistory:"Felülvizsgálati előzmények", addRepair:"+ Javítás / hiba felvétele", repairHistory:"Javítási előzmények",
+    addPhotos:"Fotók hozzáadása", photoHelp:"Kattints vagy húzd ide a képeket. A képek max. 1600 px-re lesznek átméretezve és tömörítve, majd a JSON-ba ágyazva mentődnek.",
+    storedPhotosTitle:"Tárolt fotók", date:"Dátum", type:"Típus", detailsCol:"Részletek", techStatus:"Technikus / állapot",
+    recordCompletedTitle:"Elvégzett felülvizsgálat rögzítése", result:"Eredmény", checkDate:"Felülvizsgálat dátuma", jobNo:"Munkalap / jegyzőkönyv száma", nextDueOverride:"Következő esedékesség (opcionális)",
+    workPerformed:"Elvégzett munka / megállapítások", saveCheckup:"Felülvizsgálat mentése", repairTitle:"Javítás / hiba felvétele", reportedDate:"Bejelentés / kezdés dátuma",
+    status:"Állapot", completedDate:"Befejezés dátuma", repairNo:"Munkalap / javítás száma", cost:"Költség (opcionális)", faultNotes:"Hiba / javítás megjegyzései",
+    partsUsed:"Felhasznált alkatrészek", saveRepair:"Javítás mentése", hospitalsTitle:"Kórházak és osztályok", hospitalsSub:"A berendezéslapok és a műszerfal szűrői által használt központi lista kezelése.",
+    hospitalName:"Kórház neve *", cityAddress:"Város / cím", hospitalCode:"Kórházi kód / rövid név", notes:"Megjegyzések", addHospital:"+ Kórház hozzáadása",
+    hospitalDirectory:"Kórházlista", done:"Kész", sameJson:"A kórházak és osztályok ugyanabban a JSON adatbázisban tárolódnak, mint a berendezések.",
+    editHospital:"Kórház szerkesztése", codeShort:"Kód / rövid név", saveHospital:"Kórház mentése", addWard:"Osztály hozzáadása", wardName:"Osztály neve *",
+    buildingFloor:"Épület / emelet", contact:"Kapcsolattartó", saveWard:"Osztály mentése", chooseHospital:"Válassz kórházat...", chooseWard:"Válassz osztályt...",
+    roomLocation:"Helyiség / helyszín", noUnits:"Nincs a szűrőknek megfelelő berendezés.", addFirst:"+ Első berendezés hozzáadása",
+    noHospitals:"Még nincs kórház hozzáadva.", noHospitalsHelp:"Először adj hozzá egy kórházat, majd annak osztályait.",
+    noCheckups:"Még nincs rögzített felülvizsgálat.", noRepairs:"Ehhez a berendezéshez még nincs javítás rögzítve.", noPhotos:"Ehhez a berendezéshez nincs tárolt fotó.",
+    passed:"Megfelelt", passedNotes:"Megfelelt megjegyzéssel", repairRequired:"Javítás szükséges", failed:"Nem felelt meg",
+    open:"Nyitott", waitingParts:"Alkatrészre vár", sentOut:"Külső javításon", completed:"Befejezve", cancelled:"Törölve",
+    archived:"Archivált", noInspection:"Nincs aktív felülvizsgálati ütemezés.", noHospital:"Nincs kórház", noDepartment:"Nincs osztály",
+    noTechnician:"Nincs technikus", noDueDate:"Nincs esedékességi dátum", dueToday:"Ma esedékes", dueIn:"{n} nap múlva esedékes", daysOverdue:"{n} napja lejárt",
+    daysPlural:"{n} napja lejárt", dueInPlural:"{n} nap múlva esedékes", openRepairSing:"nyitott javítás", openRepairPlur:"nyitott javítás",
+    shown:"megjelenítve", total:"összesen", wardDepartment:"Osztály *", selectLang:"Nyelv"
+  }
+};
+let currentLang = localStorage.getItem("mediola_statim_lang") || "en";
+const t = k => I18N[currentLang][k] ?? I18N.en[k] ?? k;
+
+const todayISO = () => new Date().toISOString().slice(0,10);
+const esc = s => String(s??"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const parseDate = s => s ? new Date(s+"T12:00:00") : null;
+const fmt = s => s ? new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short',year:'numeric'}).format(parseDate(s)) : "—";
+const daysFromToday = s => s ? Math.ceil((parseDate(s)-parseDate(todayISO()))/86400000) : null;
+const addMonths = (dateStr, months) => {
+  if(!dateStr) return "";
+  const d = parseDate(dateStr), day=d.getDate();
+  d.setDate(1); d.setMonth(d.getMonth()+months);
+  const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+  d.setDate(Math.min(day,last));
+  return d.toISOString().slice(0,10);
+};
+function fillAutomaticDueDates(u){
+  if(!u) return u;
+  u.schedules=u.schedules||{
+    six:{enabled:true,last:"",next:""},
+    twelve:{enabled:true,last:"",next:""}
+  };
+  u.schedules.six=u.schedules.six||{enabled:true,last:"",next:""};
+  u.schedules.twelve=u.schedules.twelve||{enabled:true,last:"",next:""};
+
+  // First inspection dates are derived from acquisition/installation date.
+  // Once a checkup has been completed, its own next-due date takes precedence.
+  if(u.installed){
+    if(u.schedules.six.enabled && !u.schedules.six.last && !u.schedules.six.next)
+      u.schedules.six.next=addMonths(u.installed,6);
+    if(u.schedules.twelve.enabled && !u.schedules.twelve.last && !u.schedules.twelve.next)
+      u.schedules.twelve.next=addMonths(u.installed,12);
+  }
+  return u;
+}
+
+const money = n => (n||n===0) && n!=="" ? new Intl.NumberFormat('hu-HU').format(Number(n))+" Ft" : "—";
+function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._x);t._x=setTimeout(()=>t.classList.remove("show"),2400);}
+function openModal(id){$("#"+id).classList.add("open")}
+function closeModal(id){$("#"+id).classList.remove("open")}
+$$("[data-close]").forEach(b=>b.onclick=()=>closeModal(b.dataset.close));
+$$(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m) closeModal(m.id)}));
+
+/* IndexedDB autosave */
+const IDB_NAME="mediola_statim_manager", STORE="data", KEY="current";
+function openIDB(){return new Promise((res,rej)=>{const r=indexedDB.open(IDB_NAME,1);r.onupgradeneeded=()=>r.result.createObjectStore(STORE);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+async function localSave(){
+  db.databaseName=$("#dbName").value||db.databaseName;
+  const x=await openIDB(); const tx=x.transaction(STORE,"readwrite"); tx.objectStore(STORE).put(db,KEY);
+}
+async function localLoad(){
+  try{
+    const x=await openIDB(); const tx=x.transaction(STORE,"readonly"); const r=tx.objectStore(STORE).get(KEY);
+    return await new Promise((res,rej)=>{r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})
+  }catch(e){return null}
+}
+function changed(){
+  localSave();render();
+  if($("#unitModal").classList.contains("open")){
+    const h=$("#fHospital").value,d=$("#fDepartment").value;
+    populateUnitHospitalSelect(h,d);
+  }
+}
+
+/* Due logic */
+function scheduleEntries(u){
+  const arr=[];
+  if(u.schedules?.six?.enabled) arr.push({type:"6",label:currentLang==="hu"?"6 havi":"6 month",next:u.schedules.six.next||"",last:u.schedules.six.last||""});
+  if(u.schedules?.twelve?.enabled) arr.push({type:"12",label:currentLang==="hu"?"12 havi":"12 month",next:u.schedules.twelve.next||"",last:u.schedules.twelve.last||""});
+  return arr;
+}
+function dueClass(date){
+  const d=daysFromToday(date);
+  if(d===null) return "none";
+  if(d<0) return "overdue";
+  if(d<=30) return "due";
+  if(d<=60) return "soon";
+  return "ok";
+}
+function dueText(date){
+  const d=daysFromToday(date);
+  if(d===null) return t("noDueDate");
+  if(d<0){
+    const n=Math.abs(d);
+    return (n===1?t("daysOverdue"):t("daysPlural")).replace("{n}",n);
+  }
+  if(d===0) return t("dueToday");
+  return (d===1?t("dueIn"):t("dueInPlural")).replace("{n}",d);
+}
+function earliestDue(u){
+  const ds=scheduleEntries(u).filter(x=>x.next).sort((a,b)=>a.next.localeCompare(b.next));
+  return ds[0]||null;
+}
+function openRepairs(u){return (u.repairs||[]).filter(r=>!["Completed","Cancelled"].includes(r.status));}
+
+function applyLanguage(){
+  const L=t;
+  document.title=L("appTitle");
+  $(".brand h1").textContent=L("appTitle");
+  $(".brand small").textContent=L("appSub");
+  $("#addUnitBtn").textContent=L("addUnit");
+  $("#manageLocationsBtn").textContent=L("hospitals");
+  $("#openJsonBtn").textContent=L("openJson");
+  $("#saveJsonBtn").textContent=L("saveJson");
+  $("#csvBtn").textContent=L("exportCsv");
+  $("#search").placeholder=L("searchPh");
+
+  const sectionTitles=$$(".section-title");
+  const side= $("aside");
+  const labels=side.querySelectorAll(".filter label");
+  labels[0].textContent=L("search");
+  labels[1].textContent=L("hospital");
+  labels[2].textContent=L("department");
+  labels[3].textContent=L("checkupType");
+  labels[4].textContent=L("due");
+  labels[5].textContent=L("repairStatus");
+  labels[6].textContent=L("recordStatus");
+  labels[7].textContent=L("databaseName");
+
+  side.querySelectorAll(".section-title")[0].textContent=L("filter");
+  side.querySelectorAll(".section-title")[1].textContent=L("quickViews");
+  side.querySelectorAll(".section-title")[2].textContent=L("locations");
+  side.querySelectorAll(".section-title")[3].textContent=L("database");
+  $("#manageLocationsSideBtn").textContent=L("manageHospitals");
+  side.querySelector(".side-note").innerHTML=L("dbNote");
+
+  $("#hospitalFilter").options[0].text=L("allHospitals");
+  $("#departmentFilter").options[0].text=L("allDepartments");
+  $("#intervalFilter").options[0].text=L("bothCheckups");
+  $("#dueFilter").options[0].text=L("all");
+  $("#dueFilter").options[1].text=L("overdue");
+  $("#dueFilter").options[2].text=L("next30");
+  $("#dueFilter").options[3].text=L("next60");
+  $("#dueFilter").options[4].text=L("next90");
+  $("#dueFilter").options[5].text=L("noDue");
+  $("#repairFilter").options[0].text=L("allRepairs");
+  $("#repairFilter").options[1].text=L("hasOpenRepair");
+  $("#repairFilter").options[2].text=L("noOpenRepair");
+  $("#archiveFilter").options[0].text=L("activeOnly");
+  $("#archiveFilter").options[1].text=L("activeArchived");
+  $("#archiveFilter").options[2].text=L("archivedOnly");
+  const quickBtns=$$(".seg button");
+  quickBtns[0].textContent=L("overdue"); quickBtns[1].textContent=L("nextMonth"); quickBtns[2].textContent=L("openRepairs"); quickBtns[3].textContent=L("everything");
+
+  $("#statUnits").nextElementSibling.textContent=L("activeUnits");
+  $("#statOverdue").nextElementSibling.textContent=L("overdueCheckups");
+  $("#stat30").nextElementSibling.textContent=L("due30");
+  $("#statRepairs").nextElementSibling.textContent=L("openRepairs");
+  $("#statPhotos").nextElementSibling.textContent=L("storedPhotos");
+  $(".toolbar h2").textContent=L("units");
+  $("#sortBy").options[0].text=L("sortDue");
+  $("#sortBy").options[1].text=L("sortHospital");
+  $("#sortBy").options[2].text=L("sortModel");
+  $("#sortBy").options[3].text=L("sortSerial");
+  $("#sortBy").options[4].text=L("sortUpdated");
+  $(".toolbar button").textContent=L("printView");
+
+  const tabs=$$("#tabs .tab");
+  [L("details"),L("checkups"),L("repairs"),L("photos"),L("timeline")].forEach((x,i)=>tabs[i].textContent=x);
+
+  const detailPage=$('[data-page="details"]');
+  detailPage.querySelector(".notice span").textContent=L("masterNote");
+  detailPage.querySelector(".notice button").textContent=L("manageHospitals");
+  const dlabels=detailPage.querySelectorAll(".field label");
+  const dtexts=[L("hospital")+" *",L("wardDepartment"),L("roomLocation"),L("manufacturer"),L("model"),L("serial"),
+    L("asset"),L("installed"),L("responsible"),L("phoneEmail"),L("technician"),L("internalTag"),L("unitNotes"),
+    L("last6"),L("next6"),L("last12"),L("next12")];
+  dlabels.forEach((el,i)=>{if(dtexts[i]) el.textContent=dtexts[i]});
+  detailPage.querySelectorAll(".section-title")[0].textContent=L("schedules");
+  detailPage.querySelectorAll(".checkrow b")[0].textContent=L("sixCheck");
+  detailPage.querySelectorAll(".checkrow .sub")[0].textContent=L("sixHelp");
+  detailPage.querySelectorAll(".checkrow b")[1].textContent=L("twelveCheck");
+  detailPage.querySelectorAll(".checkrow .sub")[1].textContent=L("twelveHelp");
+  $("#calc6").textContent=L("calc6"); $("#calc12").textContent=L("calc12");
+  detailPage.querySelectorAll(".section-title")[1].textContent=L("record");
+  detailPage.querySelectorAll(".checkrow b")[2].textContent=L("archiveUnit");
+  detailPage.querySelectorAll(".checkrow .sub")[2].textContent=" "+L("archiveHelp");
+  $("#deleteUnitBtn").textContent=L("deleteUnit");
+  $("#saveUnitBtn").textContent=L("saveChanges");
+  $$('#unitModal [data-close="unitModal"]').forEach((b,i)=>{if(b.textContent.trim()!=="×" && i>0)b.textContent=L("cancel")});
+
+  const cp=$('[data-page="checkups"]');
+  cp.querySelector(".notice").textContent=L("completedCheckHelp"); $("#addCheckBtn").textContent=L("recordCompleted");
+  cp.querySelector(".section-title").textContent=L("checkHistory");
+  $("#addRepairBtn").textContent=L("addRepair"); $('[data-page="repairs"] .section-title').textContent=L("repairHistory");
+  $("#dropZone b").textContent=L("addPhotos"); $("#dropZone .sub").textContent=L("photoHelp"); $('[data-page="photos"] .section-title').textContent=L("storedPhotosTitle");
+  const ths=$$('[data-page="history"] th'); [L("date"),L("type"),L("detailsCol"),L("techStatus")].forEach((x,i)=>ths[i].textContent=x);
+
+  $("#checkModal h2").textContent=L("recordCompletedTitle");
+  const cl=$("#checkModal").querySelectorAll(".field label");
+  [L("checkupType"),L("checkDate"),L("result"),L("technician"),L("jobNo"),L("nextDueOverride"),L("workPerformed")].forEach((x,i)=>cl[i].textContent=x);
+  $("#saveCheckBtn").textContent=L("saveCheckup");
+  $$('#checkModal [data-close="checkModal"]').forEach(b=>{if(b.textContent.trim()!=="×")b.textContent=L("cancel")});
+
+  $("#repairTitle").textContent=L("repairTitle");
+  const rl=$("#repairModal").querySelectorAll(".field label");
+  [L("reportedDate"),L("status"),L("technician"),L("completedDate"),L("repairNo"),L("cost"),L("faultNotes"),L("partsUsed")].forEach((x,i)=>rl[i].textContent=x);
+  $("#saveRepairBtn").textContent=L("saveRepair");
+  $$('#repairModal [data-close="repairModal"]').forEach(b=>{if(b.textContent.trim()!=="×")b.textContent=L("cancel")});
+
+  $("#locationsModal h2").textContent=L("hospitalsTitle");
+  $("#locationsModal .dialog-head .sub").textContent=L("hospitalsSub");
+  const ll=$("#locationsModal").querySelectorAll(".field label");
+  [L("hospitalName"),L("cityAddress"),L("hospitalCode"),L("notes")].forEach((x,i)=>ll[i].textContent=x);
+  $("#addHospitalBtn").textContent=L("addHospital");
+  $("#locationsModal .section-title").textContent=L("hospitalDirectory");
+  $("#locationsModal .footer-actions .sub").textContent=L("sameJson");
+  $('#locationsModal .footer-actions [data-close="locationsModal"]').textContent=L("done");
+
+  $("#editHospitalModal h2").textContent=L("editHospital");
+  const ehl=$("#editHospitalModal").querySelectorAll(".field label");
+  [L("hospitalName"),L("cityAddress"),L("codeShort"),L("notes")].forEach((x,i)=>ehl[i].textContent=x);
+  $("#saveHospitalEditBtn").textContent=L("saveHospital");
+  $$('#editHospitalModal [data-close="editHospitalModal"]').forEach(b=>{if(b.textContent.trim()!=="×")b.textContent=L("cancel")});
+
+  const wl=$("#wardModal").querySelectorAll(".field label");
+  [L("wardName"),L("buildingFloor"),L("contact"),L("notes")].forEach((x,i)=>wl[i].textContent=x);
+  $("#saveWardBtn").textContent=L("saveWard");
+  $$('#wardModal [data-close="wardModal"]').forEach(b=>{if(b.textContent.trim()!=="×")b.textContent=L("cancel")});
+
+  $("#cResult").options[0].text=L("passed"); $("#cResult").options[1].text=L("passedNotes"); $("#cResult").options[2].text=L("repairRequired"); $("#cResult").options[3].text=L("failed");
+  $("#rStatus").options[0].text=L("open"); $("#rStatus").options[1].text=L("waitingParts"); $("#rStatus").options[2].text=L("sentOut"); $("#rStatus").options[3].text=L("completed"); $("#rStatus").options[4].text=L("cancelled");
+
+  populateUnitHospitalSelect($("#fHospital").value||"",$("#fDepartment").value||"");
+  render();
+  if($("#locationsModal").classList.contains("open")) renderLocations();
+  if($("#unitModal").classList.contains("open") && currentUnit()) renderUnitSubsections(currentUnit());
+}
+$("#langSelect").value=currentLang;
+$("#langSelect").addEventListener("change",()=>{
+  currentLang=$("#langSelect").value;
+  localStorage.setItem("mediola_statim_lang",currentLang);
+  applyLanguage();
+});
+
+/* Rendering */
+function masterHospitals(){
+  const byName=new Map();
+  (db.locations||[]).forEach(h=>byName.set(h.name,h));
+  db.units.forEach(u=>{
+    if(!u.hospital)return;
+    if(!byName.has(u.hospital)){
+      byName.set(u.hospital,{id:uid("hospital"),name:u.hospital,address:"",code:"",notes:"",wards:[]});
+    }
+    const h=byName.get(u.hospital);
+    if(u.department && !(h.wards||[]).some(w=>w.name===u.department)){
+      h.wards=h.wards||[];h.wards.push({id:uid("ward"),name:u.department,location:"",contact:"",notes:""});
+    }
+  });
+  db.locations=[...byName.values()].sort((a,b)=>a.name.localeCompare(b.name));
+  return db.locations;
+}
+function rebuildFilters(){
+  const masters=masterHospitals();
+  const hospitals=masters.map(h=>h.name).sort();
+  const selectedH=$("#hospitalFilter").value;
+  $("#hospitalFilter").innerHTML=`<option value="">${t("allHospitals")}</option>`+hospitals.map(x=>`<option ${x===selectedH?"selected":""}>${esc(x)}</option>`).join("");
+  const h=$("#hospitalFilter").value;
+  let deps=[];
+  if(h){
+    deps=(masters.find(x=>x.name===h)?.wards||[]).map(w=>w.name);
+  }else{
+    deps=[...new Set(masters.flatMap(x=>(x.wards||[]).map(w=>w.name)))];
+  }
+  deps=deps.filter(Boolean).sort();
+  const selectedD=$("#departmentFilter").value;
+  $("#departmentFilter").innerHTML=`<option value="">${t("allDepartments")}</option>`+deps.map(x=>`<option ${x===selectedD?"selected":""}>${esc(x)}</option>`).join("");
+  if(selectedD && !deps.includes(selectedD)) $("#departmentFilter").value="";
+}
+function populateUnitHospitalSelect(selectedHospital="",selectedDepartment=""){
+  const masters=masterHospitals();
+  const names=masters.map(h=>h.name).sort();
+  const extras=selectedHospital && !names.includes(selectedHospital) ? [selectedHospital] : [];
+  $("#fHospital").innerHTML=`<option value="">${t("chooseHospital")}</option>`+[...names,...extras].map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("");
+  $("#fHospital").value=selectedHospital||"";
+  populateUnitWardSelect(selectedDepartment);
+}
+function populateUnitWardSelect(selectedDepartment=""){
+  const hospital=$("#fHospital").value;
+  const h=(db.locations||[]).find(x=>x.name===hospital);
+  const wards=(h?.wards||[]).map(w=>w.name).sort();
+  const extras=selectedDepartment && !wards.includes(selectedDepartment) ? [selectedDepartment] : [];
+  $("#fDepartment").innerHTML=`<option value="">${t("chooseWard")}</option>`+[...wards,...extras].map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("");
+  $("#fDepartment").value=selectedDepartment||"";
+}
+$("#fHospital").addEventListener("change",()=>populateUnitWardSelect(""));
+function filteredUnits(){
+  const q=$("#search").value.trim().toLowerCase(), h=$("#hospitalFilter").value, dep=$("#departmentFilter").value;
+  const interval=$("#intervalFilter").value, due=$("#dueFilter").value, repair=$("#repairFilter").value, arch=$("#archiveFilter").value;
+  return db.units.filter(u=>{
+    if(arch==="active" && u.archived) return false;
+    if(arch==="archived" && !u.archived) return false;
+    if(h && u.hospital!==h) return false;
+    if(dep && u.department!==dep) return false;
+    if(interval && !scheduleEntries(u).some(s=>s.type===interval)) return false;
+    const sched = interval ? scheduleEntries(u).filter(s=>s.type===interval) : scheduleEntries(u);
+    if(due==="overdue" && !sched.some(s=>daysFromToday(s.next)!==null && daysFromToday(s.next)<0)) return false;
+    if(["30","60","90"].includes(due) && !sched.some(s=>{const d=daysFromToday(s.next);return d!==null && d>=0 && d<=Number(due)})) return false;
+    if(due==="none" && !sched.some(s=>!s.next)) return false;
+    const or=openRepairs(u).length;
+    if(repair==="open" && !or) return false;
+    if(repair==="none" && or) return false;
+    if(q){
+      const hay=JSON.stringify({
+        h:u.hospital,d:u.department,l:u.location,m:u.model,s:u.serial,a:u.assetNo,t:u.tag,n:u.notes,c:u.contact,
+        checks:u.checkups?.map(c=>[c.jobNo,c.notes,c.technician]), repairs:u.repairs?.map(r=>[r.jobNo,r.notes,r.parts])
+      }).toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+function renderStats(){
+  const active=db.units.filter(u=>!u.archived);
+  let overdue=0,d30=0,photos=0;
+  active.forEach(u=>{
+    scheduleEntries(u).forEach(s=>{
+      const d=daysFromToday(s.next); if(d!==null&&d<0) overdue++; else if(d!==null&&d<=30) d30++;
+    });
+    photos+=(u.photos||[]).length;
+  });
+  $("#statUnits").textContent=active.length; $("#statOverdue").textContent=overdue; $("#stat30").textContent=d30;
+  $("#statRepairs").textContent=active.reduce((n,u)=>n+openRepairs(u).length,0); $("#statPhotos").textContent=photos;
+}
+function render(){
+  rebuildFilters(); renderStats();
+  let units=filteredUnits(), sort=$("#sortBy").value;
+  units.sort((a,b)=>{
+    if(sort==="hospital") return (a.hospital||"").localeCompare(b.hospital||"")||(a.department||"").localeCompare(b.department||"");
+    if(sort==="model") return (a.model||"").localeCompare(b.model||"");
+    if(sort==="serial") return (a.serial||"").localeCompare(b.serial||"");
+    if(sort==="updated") return (b.updatedAt||"").localeCompare(a.updatedAt||"");
+    const ad=earliestDue(a)?.next||"9999-99-99", bd=earliestDue(b)?.next||"9999-99-99"; return ad.localeCompare(bd);
+  });
+  $("#resultCount").textContent=`${units.length} ${t("shown")} / ${db.units.length} ${t("total")}`;
+  $("#cards").innerHTML = units.length ? units.map(cardHTML).join("") : `<div class="empty">${t("noUnits")}<br><br><button class="btn brand" onclick="newUnit()">${t("addFirst")}</button></div>`;
+}
+function cardHTML(u){
+  const e=earliestDue(u), cls=e?dueClass(e.next):"none", repairs=openRepairs(u);
+  const schedule=scheduleEntries(u).map(s=>`<div class="due-line"><span><b>${s.label}</b> · ${fmt(s.next)}</span><span class="badge ${dueClass(s.next)}">${dueText(s.next)}</span></div>`).join("");
+  return `<article class="card due-${cls} ${u.archived?"archived":""}">
+    <div class="stripe ${cls}"></div>
+    <div class="card-top">
+      <div style="flex:1"><h3>${esc(u.model||"STATIM")} · ${esc(u.serial||"No serial")}</h3>
+        <div class="sub">${esc(u.hospital||t("noHospital"))} → ${esc(u.department||t("noDepartment"))}${u.location?` · ${esc(u.location)}`:""}</div>
+        <div class="pillrow">${u.tag?`<span class="badge">${esc(u.tag)}</span>`:""}${repairs.length?`<span class="badge repair">${repairs.length} ${repairs.length==1?t("openRepairSing"):t("openRepairPlur")}</span>`:""}${u.archived?`<span class="badge">${t("archived")}</span>`:""}</div>
+      </div>
+    </div>
+    <div class="meta">
+      <div class="meta-box"><div class="k">${t("assetShort")}</div><div class="v">${esc(u.assetNo||"—")}</div></div>
+      <div class="meta-box"><div class="k">${t("lastService")}</div><div class="v">${fmt((u.checkups||[]).sort((a,b)=>b.date.localeCompare(a.date))[0]?.date)}</div></div>
+    </div>
+    <div class="due-list">${schedule||`<div class="sub">${t("noInspection")}</div>`}</div>
+    <div class="card-actions">
+      <button class="btn small brand" onclick="editUnit('${u.id}')">${currentLang==="hu"?"Megnyitás":"Open unit"}</button>
+      <button class="btn small ghost" onclick="quickCheck('${u.id}')">${currentLang==="hu"?"Felülvizsgálat":"Record checkup"}</button>
+      <button class="btn small ghost" onclick="quickRepair('${u.id}')">${currentLang==="hu"?"Javítás hozzáadása":"Add repair"}</button>
+    </div>
+  </article>`;
+}
+
+/* Unit editing */
+function defaultUnit(){
+  return {id:uid("unit"),manufacturer:"SciCan",model:"STATIM 2000S",hospital:"",department:"",location:"",serial:"",assetNo:"",installed:"",
+    contact:"",contactInfo:"",technician:"",tag:"",notes:"",archived:false,
+    schedules:{six:{enabled:true,last:"",next:""},twelve:{enabled:true,last:"",next:""}},
+    checkups:[],repairs:[],photos:[],createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+}
+function newUnit(){editingId=null; fillUnit(defaultUnit()); $("#deleteUnitBtn").style.display="none"; openModal("unitModal")}
+function editUnit(id){editingId=id; const u=db.units.find(x=>x.id===id); if(!u)return; fillUnit(structuredClone(u)); $("#deleteUnitBtn").style.display=""; openModal("unitModal")}
+function currentUnit(){return editingId?db.units.find(x=>x.id===editingId):null}
+function fillUnit(u){
+  fillAutomaticDueDates(u);
+  $("#modalTitle").textContent=u.serial?`${u.model||"STATIM"} · ${u.serial}`:"New STATIM unit";
+  $("#modalSub").textContent=[u.hospital,u.department].filter(Boolean).join(" → ");
+  populateUnitHospitalSelect(u.hospital||"",u.department||"");$("#fLocation").value=u.location||"";
+  $("#fManufacturer").value=u.manufacturer||"SciCan";$("#fModel").value=u.model||"";$("#fSerial").value=u.serial||"";
+  $("#fAsset").value=u.assetNo||"";$("#fInstalled").value=u.installed||"";$("#fContact").value=u.contact||"";
+  $("#fContactInfo").value=u.contactInfo||"";$("#fTechnician").value=u.technician||"";$("#fTag").value=u.tag||"";$("#fNotes").value=u.notes||"";
+  $("#fArchived").checked=!!u.archived;
+  $("#fSixEnabled").checked=u.schedules?.six?.enabled!==false;$("#fSixLast").value=u.schedules?.six?.last||"";$("#fSixNext").value=u.schedules?.six?.next||"";
+  $("#fTwelveEnabled").checked=u.schedules?.twelve?.enabled!==false;$("#fTwelveLast").value=u.schedules?.twelve?.last||"";$("#fTwelveNext").value=u.schedules?.twelve?.next||"";
+  renderUnitSubsections(u); switchTab("details");
+}
+function readUnitForm(base){
+  base.hospital=$("#fHospital").value;base.department=$("#fDepartment").value;base.location=$("#fLocation").value.trim();
+  base.manufacturer=$("#fManufacturer").value.trim();base.model=$("#fModel").value;base.serial=$("#fSerial").value.trim();base.assetNo=$("#fAsset").value.trim();
+  base.installed=$("#fInstalled").value;base.contact=$("#fContact").value.trim();base.contactInfo=$("#fContactInfo").value.trim();
+  base.technician=$("#fTechnician").value.trim();base.tag=$("#fTag").value.trim();base.notes=$("#fNotes").value.trim();base.archived=$("#fArchived").checked;
+  base.schedules=base.schedules||{};
+  base.schedules.six={enabled:$("#fSixEnabled").checked,last:$("#fSixLast").value,next:$("#fSixNext").value};
+  base.schedules.twelve={enabled:$("#fTwelveEnabled").checked,last:$("#fTwelveLast").value,next:$("#fTwelveNext").value};
+  fillAutomaticDueDates(base);
+  base.updatedAt=new Date().toISOString(); return base;
+}
+$("#saveUnitBtn").onclick=()=>{
+  let u=editingId?currentUnit():defaultUnit(); readUnitForm(u);
+  if(!u.hospital||!u.department||!u.serial){alert("Hospital, department and serial number are required.");return}
+  if(!editingId){db.units.push(u);editingId=u.id}
+  changed(); fillUnit(u); $("#deleteUnitBtn").style.display=""; toast("Unit saved");
+};
+$("#deleteUnitBtn").onclick=()=>{
+  const u=currentUnit();if(!u)return;
+  if(confirm(`Permanently delete ${u.model} ${u.serial} and all its history/photos?`)){db.units=db.units.filter(x=>x.id!==u.id);editingId=null;changed();closeModal("unitModal");toast("Unit deleted")}
+};
+$("#calc6").onclick=()=>$("#fSixNext").value=addMonths($("#fSixLast").value,6);
+$("#calc12").onclick=()=>$("#fTwelveNext").value=addMonths($("#fTwelveLast").value,12);
+
+$("#fInstalled").addEventListener("change",()=>{
+  const d=$("#fInstalled").value;
+  if(!d) return;
+  // For a unit with no completed inspection yet, acquisition date defines first due dates.
+  if(!$("#fSixLast").value) $("#fSixNext").value=addMonths(d,6);
+  if(!$("#fTwelveLast").value) $("#fTwelveNext").value=addMonths(d,12);
+});
+
+/* Tabs */
+function switchTab(name){
+  $$("#tabs .tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===name));
+  $$(".tabpage").forEach(p=>p.classList.toggle("active",p.dataset.page===name));
+}
+$$("#tabs .tab").forEach(t=>t.onclick=()=>switchTab(t.dataset.tab));
+
+/* Checkups */
+function quickCheck(id){editUnit(id); openCheckModal()}
+$("#addCheckBtn").onclick=openCheckModal;
+function openCheckModal(){
+  const u=currentUnit(); if(!u){alert("Save the unit first.");return}
+  $("#cType").value="6";$("#cDate").value=todayISO();$("#cResult").value="Passed";$("#cTech").value=u.technician||"";
+  $("#cJob").value="";$("#cNotes").value="";$("#cNext").value=addMonths(todayISO(),6);openModal("checkModal");
+}
+$("#cType").onchange=()=>$("#cNext").value=addMonths($("#cDate").value,Number($("#cType").value));
+$("#cDate").onchange=()=>$("#cNext").value=addMonths($("#cDate").value,Number($("#cType").value));
+$("#saveCheckBtn").onclick=()=>{
+  const u=currentUnit(); if(!u)return;
+  const type=$("#cType").value,date=$("#cDate").value;if(!date){alert("Checkup date is required.");return}
+  const c={id:uid("check"),type,date,result:$("#cResult").value,technician:$("#cTech").value.trim(),jobNo:$("#cJob").value.trim(),notes:$("#cNotes").value.trim(),createdAt:new Date().toISOString()};
+  u.checkups=u.checkups||[];u.checkups.push(c);
+  const key=type==="6"?"six":"twelve"; u.schedules[key].enabled=true;u.schedules[key].last=date;u.schedules[key].next=$("#cNext").value||addMonths(date,Number(type));
+  u.updatedAt=new Date().toISOString();changed();fillUnit(u);switchTab("checkups");closeModal("checkModal");toast("Checkup recorded");
+};
+function deleteCheck(id){
+  const u=currentUnit();if(!u||!confirm("Delete this checkup history entry?"))return;
+  u.checkups=u.checkups.filter(x=>x.id!==id);u.updatedAt=new Date().toISOString();changed();fillUnit(u);switchTab("checkups");
+}
+function renderChecks(u){
+  const x=(u.checkups||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
+  $("#checkHistory").innerHTML=x.length?x.map(c=>`<div class="history-item">
+    <div class="history-top"><strong>${fmt(c.date)} · ${c.type} ${currentLang==="hu"?"havi felülvizsgálat":"month checkup"}</strong><span class="badge ${c.result==="Failed"?"overdue":c.result==="Repair required"?"due":"ok"}">${esc(c.result)}</span></div>
+    <div class="sub">${esc(c.technician||"No technician")}${c.jobNo?` · ${esc(c.jobNo)}`:""}</div>
+    ${c.notes?`<div class="history-body">${esc(c.notes)}</div>`:""}
+    <div class="history-actions"><button class="btn small danger" onclick="deleteCheck('${c.id}')">Delete</button></div>
+  </div>`).join(""):`<div class="empty">${t("noCheckups")}</div>`;
+}
+
+/* Repairs */
+function quickRepair(id){editUnit(id);openRepairModal()}
+$("#addRepairBtn").onclick=()=>openRepairModal();
+function openRepairModal(repair=null){
+  const u=currentUnit();if(!u){alert("Save the unit first.");return}
+  editingRepairId=repair?.id||null;$("#repairTitle").textContent=repair?"Edit repair":"Add repair / fault";
+  $("#rDate").value=repair?.date||todayISO();$("#rStatus").value=repair?.status||"Open";$("#rTech").value=repair?.technician||u.technician||"";
+  $("#rDone").value=repair?.completedDate||"";$("#rJob").value=repair?.jobNo||"";$("#rCost").value=repair?.cost??"";
+  $("#rNotes").value=repair?.notes||"";$("#rParts").value=repair?.parts||"";openModal("repairModal");
+}
+$("#rStatus").onchange=()=>{if($("#rStatus").value==="Completed"&&!$("#rDone").value)$("#rDone").value=todayISO()}
+$("#saveRepairBtn").onclick=()=>{
+  const u=currentUnit();if(!u)return;
+  const data={id:editingRepairId||uid("repair"),date:$("#rDate").value||todayISO(),status:$("#rStatus").value,technician:$("#rTech").value.trim(),
+    completedDate:$("#rDone").value,jobNo:$("#rJob").value.trim(),cost:$("#rCost").value,notes:$("#rNotes").value.trim(),parts:$("#rParts").value.trim(),updatedAt:new Date().toISOString()};
+  u.repairs=u.repairs||[];const i=u.repairs.findIndex(x=>x.id===editingRepairId);if(i>=0)u.repairs[i]=data;else u.repairs.push(data);
+  u.updatedAt=new Date().toISOString();changed();fillUnit(u);switchTab("repairs");closeModal("repairModal");toast("Repair saved");
+};
+function editRepair(id){const u=currentUnit(),r=u?.repairs?.find(x=>x.id===id);if(r)openRepairModal(r)}
+function deleteRepair(id){const u=currentUnit();if(!u||!confirm("Delete this repair entry?"))return;u.repairs=u.repairs.filter(x=>x.id!==id);changed();fillUnit(u);switchTab("repairs")}
+function renderRepairs(u){
+  const x=(u.repairs||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
+  $("#repairHistory").innerHTML=x.length?x.map(r=>`<div class="history-item">
+    <div class="history-top"><strong>${fmt(r.date)} · ${esc(r.jobNo||"Repair")}</strong><span class="badge ${["Completed","Cancelled"].includes(r.status)?"ok":"repair"}">${esc(r.status)}</span></div>
+    <div class="sub">${esc(r.technician||"No technician")}${r.completedDate?` · completed ${fmt(r.completedDate)}`:""}${r.cost!==""&&r.cost!=null?` · ${money(r.cost)}`:""}</div>
+    ${r.notes?`<div class="history-body"><b>Fault/work:</b> ${esc(r.notes)}</div>`:""}${r.parts?`<div class="history-body"><b>Parts:</b> ${esc(r.parts)}</div>`:""}
+    <div class="history-actions"><button class="btn small ghost" onclick="editRepair('${r.id}')">Edit</button><button class="btn small danger" onclick="deleteRepair('${r.id}')">Delete</button></div>
+  </div>`).join(""):`<div class="empty">${t("noRepairs")}</div>`;
+}
+
+/* Photos */
+const dz=$("#dropZone"), pi=$("#photoInput");
+dz.onclick=()=>pi.click(); dz.ondragover=e=>{e.preventDefault();dz.classList.add("drag")};dz.ondragleave=()=>dz.classList.remove("drag");
+dz.ondrop=e=>{e.preventDefault();dz.classList.remove("drag");handlePhotos(e.dataTransfer.files)};pi.onchange=()=>handlePhotos(pi.files);
+async function handlePhotos(files){
+  const u=currentUnit();if(!u){alert("Save unit before adding photos.");return}
+  for(const f of [...files]){
+    if(!f.type.startsWith("image/"))continue;
+    try{
+      const dataUrl=await compressImage(f,1600,.72);
+      u.photos=u.photos||[];u.photos.push({id:uid("photo"),name:f.name,caption:"",dataUrl,addedAt:new Date().toISOString()});
+    }catch(e){console.error(e);alert("Could not process "+f.name)}
+  }
+  u.updatedAt=new Date().toISOString();changed();renderUnitSubsections(u);switchTab("photos");pi.value="";toast("Photos added and compressed");
+}
+function compressImage(file,maxDim,quality){
+  return new Promise((resolve,reject)=>{
+    const r=new FileReader();r.onerror=reject;r.onload=()=>{
+      const img=new Image();img.onerror=reject;img.onload=()=>{
+        let w=img.naturalWidth,h=img.naturalHeight,scale=Math.min(1,maxDim/Math.max(w,h));w=Math.round(w*scale);h=Math.round(h*scale);
+        const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");x.drawImage(img,0,0,w,h);
+        resolve(c.toDataURL("image/jpeg",quality));
+      };img.src=r.result;
+    };r.readAsDataURL(file);
+  });
+}
+function photoCaption(id,val){const u=currentUnit(),p=u?.photos?.find(x=>x.id===id);if(p){p.caption=val;localSave()}}
+function deletePhoto(id){const u=currentUnit();if(!u||!confirm("Remove this photo from the unit and JSON database?"))return;u.photos=u.photos.filter(x=>x.id!==id);changed();renderUnitSubsections(u);switchTab("photos")}
+function openPhoto(id){const p=currentUnit()?.photos?.find(x=>x.id===id);if(p){const w=window.open();w.document.write(`<img src="${p.dataUrl}" style="max-width:100%;height:auto">`)}}
+function renderPhotos(u){
+  $("#gallery").innerHTML=(u.photos||[]).length?(u.photos||[]).map(p=>`<div class="photo">
+    <img src="${p.dataUrl}" onclick="openPhoto('${p.id}')" title="Click to enlarge">
+    <div class="cap"><input value="${esc(p.caption||"")}" placeholder="Photo caption..." oninput="photoCaption('${p.id}',this.value)"></div>
+    <div class="photo-actions"><button class="btn small ghost" onclick="openPhoto('${p.id}')">View</button><button class="btn small danger" onclick="deletePhoto('${p.id}')">Delete</button></div>
+  </div>`).join(""):`<div class="empty" style="grid-column:1/-1">${t("noPhotos")}</div>`;
+}
+function renderTimeline(u){
+  const rows=[];
+  (u.checkups||[]).forEach(c=>rows.push({date:c.date,type:`${c.type}m checkup`,details:c.notes||c.jobNo||c.result,who:[c.technician,c.result].filter(Boolean).join(" · ")}));
+  (u.repairs||[]).forEach(r=>rows.push({date:r.completedDate||r.date,type:"Repair",details:r.notes||r.parts||r.jobNo,who:[r.technician,r.status].filter(Boolean).join(" · ")}));
+  (u.photos||[]).forEach(p=>rows.push({date:(p.addedAt||"").slice(0,10),type:"Photo",details:p.caption||p.name,who:""}));
+  rows.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  $("#timeline").innerHTML=rows.length?rows.map(r=>`<tr><td>${fmt(r.date)}</td><td>${esc(r.type)}</td><td>${esc(r.details||"—")}</td><td>${esc(r.who||"—")}</td></tr>`).join(""):'<tr><td colspan="4">No history yet.</td></tr>';
+}
+function renderUnitSubsections(u){renderChecks(u);renderRepairs(u);renderPhotos(u);renderTimeline(u)}
+
+/* Hospital & ward master directory */
+function renderLocations(){
+  const list=$("#locationList");
+  const locations=(db.locations||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
+  if(!locations.length){
+    list.innerHTML=`<div class="empty">${t("noHospitals")}<br><br>${t("noHospitalsHelp")}</div>`;
+    return;
+  }
+  list.innerHTML=locations.map(h=>{
+    const units=db.units.filter(u=>u.hospital===h.name);
+    const wardHtml=(h.wards||[]).slice().sort((a,b)=>a.name.localeCompare(b.name)).map(w=>{
+      const count=units.filter(u=>u.department===w.name).length;
+      return `<span class="ward-chip"><b>${esc(w.name)}</b><span class="sub">${count} unit${count===1?"":"s"}</span>
+        <button title="Edit ward" onclick="openWardModal('${h.id}','${w.id}')">✎</button>
+        <button title="Delete ward" onclick="deleteWard('${h.id}','${w.id}')">×</button></span>`;
+    }).join("");
+    return `<div class="location-card">
+      <div class="location-head">
+        <div style="flex:1"><h3>${esc(h.name)}</h3>
+          <div class="sub">${[h.code,h.address].filter(Boolean).map(esc).join(" · ")||"No address/code entered"}</div>
+          <div class="master-count">${units.length} linked unit${units.length===1?"":"s"} · ${(h.wards||[]).length} ward${(h.wards||[]).length===1?"":"s"}</div>
+          ${h.notes?`<div class="history-body">${esc(h.notes)}</div>`:""}
+        </div>
+        <div class="location-actions">
+          <button class="btn small brand" onclick="openWardModal('${h.id}')">+ ${currentLang==="hu"?"Osztály":"Ward"}</button>
+          <button class="btn small ghost" onclick="editHospital('${h.id}')">${currentLang==="hu"?"Szerkesztés":"Edit"}</button>
+          <button class="btn small danger" onclick="deleteHospital('${h.id}')">${currentLang==="hu"?"Törlés":"Delete"}</button>
+        </div>
+      </div>
+      <div class="ward-list">${wardHtml||`<span class="sub">${currentLang==="hu"?"Még nincs osztály — adj hozzá egyet, mielőtt berendezést hozol létre ehhez a kórházhoz.":"No wards yet — add one before creating a unit for this hospital."}</span>`}</div>
+    </div>`;
+  }).join("");
+}
+function openLocations(){
+  masterHospitals();renderLocations();openModal("locationsModal");
+}
+$("#manageLocationsBtn").onclick=openLocations;
+$("#manageLocationsSideBtn").onclick=openLocations;
+$("#addHospitalBtn").onclick=()=>{
+  const name=$("#locHospitalName").value.trim();
+  if(!name){alert("Hospital name is required.");return}
+  if((db.locations||[]).some(h=>h.name.toLowerCase()===name.toLowerCase())){alert("That hospital already exists.");return}
+  db.locations=db.locations||[];
+  db.locations.push({id:uid("hospital"),name,address:$("#locHospitalAddress").value.trim(),code:$("#locHospitalCode").value.trim(),notes:$("#locHospitalNotes").value.trim(),wards:[]});
+  $("#locHospitalName").value="";$("#locHospitalAddress").value="";$("#locHospitalCode").value="";$("#locHospitalNotes").value="";
+  changed();renderLocations();toast("Hospital added");
+};
+function editHospital(id){
+  const h=(db.locations||[]).find(x=>x.id===id);if(!h)return;
+  editingHospitalId=id;$("#ehName").value=h.name;$("#ehAddress").value=h.address||"";$("#ehCode").value=h.code||"";$("#ehNotes").value=h.notes||"";openModal("editHospitalModal");
+}
+$("#saveHospitalEditBtn").onclick=()=>{
+  const h=(db.locations||[]).find(x=>x.id===editingHospitalId);if(!h)return;
+  const old=h.name, name=$("#ehName").value.trim();
+  if(!name){alert("Hospital name is required.");return}
+  if((db.locations||[]).some(x=>x.id!==h.id&&x.name.toLowerCase()===name.toLowerCase())){alert("Another hospital already uses that name.");return}
+  h.name=name;h.address=$("#ehAddress").value.trim();h.code=$("#ehCode").value.trim();h.notes=$("#ehNotes").value.trim();
+  if(old!==name){
+    db.units.forEach(u=>{if(u.hospital===old)u.hospital=name});
+    if($("#unitModal").classList.contains("open") && $("#fHospital").value===old) $("#fHospital").value=name;
+  }
+  changed();renderLocations();closeModal("editHospitalModal");toast("Hospital updated");
+};
+function deleteHospital(id){
+  const h=(db.locations||[]).find(x=>x.id===id);if(!h)return;
+  const count=db.units.filter(u=>u.hospital===h.name).length;
+  if(count){alert(`This hospital still has ${count} linked unit(s). Move or archive/delete those units before deleting the hospital.`);return}
+  if(confirm(`Delete "${h.name}" and its ward list?`)){db.locations=db.locations.filter(x=>x.id!==id);changed();renderLocations();toast("Hospital deleted")}
+}
+function openWardModal(hospitalId,wardId=null){
+  const h=(db.locations||[]).find(x=>x.id===hospitalId);if(!h)return;
+  editingWardHospitalId=hospitalId;editingWardId=wardId;
+  const w=wardId?(h.wards||[]).find(x=>x.id===wardId):null;
+  $("#wardModalTitle").textContent=w?"Edit ward":"Add ward";
+  $("#wardModalSub").textContent=h.name;
+  $("#wardName").value=w?.name||"";$("#wardLocation").value=w?.location||"";$("#wardContact").value=w?.contact||"";$("#wardNotes").value=w?.notes||"";
+  openModal("wardModal");
+}
+$("#saveWardBtn").onclick=()=>{
+  const h=(db.locations||[]).find(x=>x.id===editingWardHospitalId);if(!h)return;
+  const name=$("#wardName").value.trim();if(!name){alert("Ward / department name is required.");return}
+  h.wards=h.wards||[];
+  if(h.wards.some(w=>w.id!==editingWardId&&w.name.toLowerCase()===name.toLowerCase())){alert("That ward already exists in this hospital.");return}
+  if(editingWardId){
+    const w=h.wards.find(x=>x.id===editingWardId);const old=w.name;
+    w.name=name;w.location=$("#wardLocation").value.trim();w.contact=$("#wardContact").value.trim();w.notes=$("#wardNotes").value.trim();
+    if(old!==name){
+      db.units.forEach(u=>{if(u.hospital===h.name&&u.department===old)u.department=name});
+      if($("#unitModal").classList.contains("open") && $("#fHospital").value===h.name && $("#fDepartment").value===old) $("#fDepartment").value=name;
+    }
+  }else{
+    h.wards.push({id:uid("ward"),name,location:$("#wardLocation").value.trim(),contact:$("#wardContact").value.trim(),notes:$("#wardNotes").value.trim()});
+  }
+  changed();renderLocations();closeModal("wardModal");toast(editingWardId?"Ward updated":"Ward added");
+};
+function deleteWard(hospitalId,wardId){
+  const h=(db.locations||[]).find(x=>x.id===hospitalId),w=h?.wards?.find(x=>x.id===wardId);if(!h||!w)return;
+  const count=db.units.filter(u=>u.hospital===h.name&&u.department===w.name).length;
+  if(count){alert(`This ward still has ${count} linked unit(s). Move those units to another ward before deleting it.`);return}
+  if(confirm(`Delete ward "${w.name}"?`)){h.wards=h.wards.filter(x=>x.id!==wardId);changed();renderLocations();toast("Ward deleted")}
+}
+
+/* JSON / CSV */
+$("#openJsonBtn").onclick=async()=>{
+  if(window.showOpenFilePicker){
+    try{
+      const handles=await showOpenFilePicker({multiple:false,types:[{description:"JSON database",accept:{"application/json":[".json"]}}]});
+      fileHandle=handles[0];
+      const f=await fileHandle.getFile();
+      await loadJsonFile(f,true);
+      return;
+    }catch(e){if(e.name==="AbortError")return; console.warn(e)}
+  }
+  $("#jsonFile").click();
+};
+$("#jsonFile").onchange=async()=>{
+  const f=$("#jsonFile").files[0];if(!f)return;
+  await loadJsonFile(f,false);
+  $("#jsonFile").value="";
+};
+async function loadJsonFile(f,keepHandle){
+  try{
+    const j=JSON.parse(await f.text());
+    if(!j || !Array.isArray(j.units)) throw new Error("Not a Mediola STATIM database.");
+    if(!confirm(`Open "${j.databaseName||f.name}" with ${j.units.length} unit(s)? This replaces the current browser copy.`))return;
+    db=j;normalizeDB();db.version=db.version||1;db.databaseName=db.databaseName||f.name.replace(/\.json$/i,"");$("#dbName").value=db.databaseName;
+    if(!keepHandle) fileHandle=null;
+    await localSave();render();toast(keepHandle?"JSON opened — future saves update this file":"JSON database loaded");
+  }catch(e){alert("Could not open JSON: "+e.message)}
+}
+$("#saveJsonBtn").onclick=saveJSON;
+async function saveJSON(){
+  db.databaseName=$("#dbName").value||db.databaseName;db.exportedAt=new Date().toISOString();
+  const text=JSON.stringify(db,null,2);
+  const safe=(db.databaseName||"mediola_statim").replace(/[^\w\-]+/g,"_");
+  try{
+    if(fileHandle){
+      const w=await fileHandle.createWritable();await w.write(text);await w.close();toast("JSON database updated");return;
+    }
+    if(window.showSaveFilePicker){
+      fileHandle=await showSaveFilePicker({suggestedName:safe+".json",types:[{description:"JSON database",accept:{"application/json":[".json"]}}]});
+      const w=await fileHandle.createWritable();await w.write(text);await w.close();toast("JSON database saved — future saves update this file");return;
+    }
+  }catch(e){
+    if(e.name==="AbortError")return;
+    console.warn(e);
+    fileHandle=null;
+  }
+  downloadBlob(new Blob([text],{type:"application/json"}),safe+".json");toast("JSON database downloaded");
+}
+function downloadBlob(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500)}
+$("#csvBtn").onclick=()=>{
+  const rows=[["Hospital","Department","Location","Manufacturer","Model","Serial","Asset No","6m Last","6m Next","12m Last","12m Next","Open Repairs","Technician","Tag","Archived"]];
+  db.units.forEach(u=>rows.push([u.hospital,u.department,u.location,u.manufacturer,u.model,u.serial,u.assetNo,u.schedules?.six?.last,u.schedules?.six?.next,u.schedules?.twelve?.last,u.schedules?.twelve?.next,openRepairs(u).length,u.technician,u.tag,u.archived?"Yes":"No"]));
+  const csv=rows.map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\r\n");
+  downloadBlob(new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}),"mediola_statim_units.csv");
+};
+
+/* Filters/events */
+["search","departmentFilter","intervalFilter","dueFilter","repairFilter","archiveFilter","sortBy"].forEach(id=>$("#"+id).addEventListener(id==="search"?"input":"change",render));
+$("#hospitalFilter").onchange=()=>{rebuildFilters();render()};
+$("#dbName").onchange=()=>{db.databaseName=$("#dbName").value;localSave()};
+$$("[data-quick]").forEach(b=>b.onclick=()=>{
+  const q=b.dataset.quick;$("#dueFilter").value=q==="overdue"?"overdue":q==="30"?"30":"all";$("#repairFilter").value=q==="repair"?"open":"";
+  $$("#aside .seg button").forEach?.(()=>{});
+  $$(".seg button").forEach(x=>x.classList.toggle("active",x===b));render();
+});
+
+/* Seed sample helper intentionally not auto-used */
+function normalizeDB(){
+  db.units=db.units||[];
+  db.locations=db.locations||[];
+  db.locations.forEach(h=>{h.id=h.id||uid("hospital");h.wards=h.wards||[];h.wards.forEach(w=>w.id=w.id||uid("ward"))});
+  db.units.forEach(u=>{
+    u.schedules=u.schedules||{six:{enabled:true,last:"",next:""},twelve:{enabled:true,last:"",next:""}};
+    u.schedules.six=u.schedules.six||{enabled:false,last:"",next:""};
+    u.schedules.twelve=u.schedules.twelve||{enabled:false,last:"",next:""};
+    u.checkups=u.checkups||[];u.repairs=u.repairs||[];u.photos=u.photos||[];
+    fillAutomaticDueDates(u);
+  });
+  masterHospitals();
+}
+$("#addUnitBtn").onclick=newUnit;
+
+/* Startup */
+(async()=>{
+  const saved=await localLoad();
+  if(saved){db=saved}else db=blankDB();
+  normalizeDB();
+  $("#dbName").value=db.databaseName||"Mediola STATIM database";
+  $("#langSelect").value=currentLang;
+  applyLanguage();
+})();
+</script>
+</body>
+</html>
